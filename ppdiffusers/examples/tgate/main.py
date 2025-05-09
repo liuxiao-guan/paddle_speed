@@ -2,9 +2,9 @@ import os
 import argparse
 import paddle
 
-from tgate import TgateSDXLLoader, TgateSDXLDeepCacheLoader, TgatePixArtAlphaLoader, TgateSVDLoader
+from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
 from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
-from ppdiffusers import UNet2DConditionModel, LCMScheduler
+from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     args = parse_args()
     os.makedirs(args.saved_path, exist_ok=True)
     if args.prompt:
-        saved_path = os.path.join(args.saved_path, 'test.png')
+        saved_path = os.path.join(args.saved_path, 'old_bfloat16.png')
     elif args.image:
         saved_path = os.path.join(args.saved_path, 'test.mp4')
 
@@ -101,14 +101,7 @@ if __name__ == '__main__':
             paddle_dtype=paddle.float16, 
             variant="fp16", 
         )
-        if args.deepcache:
-            pipe = TgateSDXLDeepCacheLoader(
-                pipe,
-                cache_interval=3,
-                cache_branch_id=0
-            )
-        else:
-            pipe = TgateSDXLLoader(pipe)
+        pipe = TgateSDXLLoader(pipe)
         pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 
         image = pipe.tgate(
@@ -145,6 +138,22 @@ if __name__ == '__main__':
             warm_up=0, 
             num_inference_steps=args.inference_step,
             lcm=True,
+            generator=generator,
+        ).images[0]
+        image.save(saved_path)
+    elif args.model == "flux":
+        pipe = FluxPipeline.from_pretrained(
+                "black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+        pipe = TgateFLUXLoader(pipe)
+        image = pipe.tgate(
+            prompt=args.prompt,
+            height=1024,
+            width=1024,
+            gate_step=args.gate_step,
+            sp_interval=args.sp_interval ,
+            fi_interval=args.fi_interval,
+            warm_up=args.warm_up,
+            num_inference_steps=args.inference_step,
             generator=generator,
         ).images[0]
         image.save(saved_path)
@@ -187,28 +196,28 @@ if __name__ == '__main__':
         ).images[0]
         image.save(saved_path)
 
-    elif args.model == 'svd':
-        pipe = StableVideoDiffusionPipeline.from_pretrained(
-            "stabilityai/stable-video-diffusion-img2vid-xt", 
-            paddle_dtype=paddle.float16, 
-            variant="fp16",
-        )
-        pipe = TgateSVDLoader(pipe)
+    # elif args.model == 'svd':
+    #     pipe = StableVideoDiffusionPipeline.from_pretrained(
+    #         "stabilityai/stable-video-diffusion-img2vid-xt", 
+    #         paddle_dtype=paddle.float16, 
+    #         variant="fp16",
+    #     )
+    #     pipe = TgateSVDLoader(pipe)
 
-        image = load_image(args.image)
+    #     image = load_image(args.image)
 
-        frames = pipe.tgate(
-            image,
-            gate_step=args.gate_step,
-            num_inference_steps=args.inference_step,
-            warm_up=args.warm_up,
-            sp_interval=args.sp_interval,
-            fi_interval=args.fi_interval,
-            num_frames=25,
-            decode_chunk_size=8,
-            generator=generator,
-        ).frames[0]
-        export_to_video(frames, saved_path, fps=7)
+    #     frames = pipe.tgate(
+    #         image,
+    #         gate_step=args.gate_step,
+    #         num_inference_steps=args.inference_step,
+    #         warm_up=args.warm_up,
+    #         sp_interval=args.sp_interval,
+    #         fi_interval=args.fi_interval,
+    #         num_frames=25,
+    #         decode_chunk_size=8,
+    #         generator=generator,
+    #     ).frames[0]
+    #     export_to_video(frames, saved_path, fps=7)
 
     else:
         raise Exception('Please sepcify the model name!')
