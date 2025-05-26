@@ -7,7 +7,7 @@ import paddle.nn.functional as F
 from ppdiffusers.models.modeling_outputs import  Transformer2DModelOutput
 from ppdiffusers.utils import USE_PEFT_BACKEND, is_torch_version, logger, scale_lora_layers, unscale_lora_layers
 
-def TeaCacheForward(
+def TeaCache_block_pab_forward(
         self,
         hidden_states: paddle.Tensor,
         encoder_hidden_states: paddle.Tensor = None,
@@ -127,98 +127,133 @@ def TeaCacheForward(
             if self.cnt == self.num_steps:
                 self.cnt = 0
 
+
+        
+        is_within_block_range = self.step_start <= timestep <= self.step_end
+        # self.count += 1
+        if timestep == 1000:
+            self.previous_block_residual = None
+            self.previous_block_encoder_residual = None
+            self.previous_single_block_residual = None
+            self.count = 0
+
         if self.enable_teacache:
             if not should_calc:
                 hidden_states += self.previous_residual
             else:
                 ori_hidden_states = hidden_states.clone()
+                # self.count +=1
                 for index_block, block in enumerate(self.transformer_blocks):
-                    if self.training and self.gradient_checkpointing:
+                    should_compute_block = (not is_within_block_range or (is_within_block_range and (index_block > self.block_step or self.count % self.block_step_N == 0))  
+                    or self.previous_block_residual is None or index_block==len(self.transformer_blocks)-1) 
+                    if should_compute_block:
+                        if self.training and self.gradient_checkpointing:
 
-                        def create_custom_forward(module, return_dict=None):
-                            def custom_forward(*inputs):
-                                if return_dict is not None:
-                                    return module(*inputs, return_dict=return_dict)
-                                else:
-                                    return module(*inputs)
+                            def create_custom_forward(module, return_dict=None):
+                                def custom_forward(*inputs):
+                                    if return_dict is not None:
+                                        return module(*inputs, return_dict=return_dict)
+                                    else:
+                                        return module(*inputs)
 
-                            return custom_forward
+                                return custom_forward
 
-                        ckpt_kwargs: Dict[str, Any] = (
-                            {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
-                        )
-                        encoder_hidden_states, hidden_states = paddle.utils.checkpoint.checkpoint(
-                            create_custom_forward(block),
-                            hidden_states,
-                            encoder_hidden_states,
-                            temb,
-                            image_rotary_emb,
-                            **ckpt_kwargs,
-                        )
-
-                    else:
-                        encoder_hidden_states, hidden_states = block(
-                            hidden_states=hidden_states,
-                            encoder_hidden_states=encoder_hidden_states,
-                            temb=temb,
-                            image_rotary_emb=image_rotary_emb,
-                            joint_attention_kwargs=joint_attention_kwargs,
-                        )
-
-                    # controlnet residual
-                    if controlnet_block_samples is not None:
-                        interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
-                        interval_control = int(np.ceil(interval_control))
-                        # For Xlabs ControlNet.
-                        if controlnet_blocks_repeat:
-                            hidden_states = (
-                                hidden_states + controlnet_block_samples[index_block % len(controlnet_block_samples)]
+                            ckpt_kwargs: Dict[str, Any] = (
+                                {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
                             )
+                            encoder_hidden_states, hidden_states = paddle.utils.checkpoint.checkpoint(
+                                create_custom_forward(block),
+                                hidden_states,
+                                encoder_hidden_states,
+                                temb,
+                                image_rotary_emb,
+                                **ckpt_kwargs,
+                            )
+
                         else:
-                            hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
+                            encoder_hidden_states, hidden_states = block(
+                                hidden_states=hidden_states,
+                                encoder_hidden_states=encoder_hidden_states,
+                                temb=temb,
+                                image_rotary_emb=image_rotary_emb,
+                                joint_attention_kwargs=joint_attention_kwargs,
+                            )
+
+                        # controlnet residual
+                        if controlnet_block_samples is not None:
+                            interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
+                            interval_control = int(np.ceil(interval_control))
+                            # For Xlabs ControlNet.
+                            if controlnet_blocks_repeat:
+                                hidden_states = (
+                                    hidden_states + controlnet_block_samples[index_block % len(controlnet_block_samples)]
+                                )
+                            else:
+                                hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
+                        if is_within_block_range and index_block == self.block_step and self.count % self.block_step_N == 0:
+                            self.previous_block_residual = hidden_states
+                            self.previous_block_encoder_residual = encoder_hidden_states   
+                    else:
+                        if is_within_block_range and index_block == self.block_step and self.count % self.block_step_N != 0:
+                            hidden_states = self.previous_block_residual
+                            encoder_hidden_states = self.previous_block_encoder_residual
+                        else:
+                            # print("*******\n")
+                            continue
+
                 hidden_states = paddle.concat([encoder_hidden_states, hidden_states], axis=1)
 
                 for index_block, block in enumerate(self.single_transformer_blocks):
-                    if self.training and self.gradient_checkpointing:
+                    should_compute_block = (not is_within_block_range or (is_within_block_range and (index_block > self.block_step_single or self.count % self.block_step_N == 0))  
+                    or self.previous_single_block_residual is None or index_block==len(self.single_transformer_blocks)-1)
+                    if should_compute_block:
+                        if self.training and self.gradient_checkpointing:
 
-                        def create_custom_forward(module, return_dict=None):
-                            def custom_forward(*inputs):
-                                if return_dict is not None:
-                                    return module(*inputs, return_dict=return_dict)
-                                else:
-                                    return module(*inputs)
+                            def create_custom_forward(module, return_dict=None):
+                                def custom_forward(*inputs):
+                                    if return_dict is not None:
+                                        return module(*inputs, return_dict=return_dict)
+                                    else:
+                                        return module(*inputs)
 
-                            return custom_forward
+                                return custom_forward
 
-                        ckpt_kwargs: Dict[str, Any] = (
-                            {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
-                        )
-                        hidden_states = paddle.utils.checkpoint.checkpoint(
-                            create_custom_forward(block),
-                            hidden_states,
-                            temb,
-                            image_rotary_emb,
-                            **ckpt_kwargs,
-                        )
+                            ckpt_kwargs: Dict[str, Any] = (
+                                {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
+                            )
+                            hidden_states = paddle.utils.checkpoint.checkpoint(
+                                create_custom_forward(block),
+                                hidden_states,
+                                temb,
+                                image_rotary_emb,
+                                **ckpt_kwargs,
+                            )
 
+                        else:
+                            hidden_states = block(
+                                hidden_states=hidden_states,
+                                temb=temb,
+                                image_rotary_emb=image_rotary_emb,
+                                joint_attention_kwargs=joint_attention_kwargs,
+                            )
+
+                        # controlnet residual
+                        if controlnet_single_block_samples is not None:
+                            interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
+                            interval_control = int(np.ceil(interval_control))
+                            hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
+                                hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+                                + controlnet_single_block_samples[index_block // interval_control]
+                            )
+                        if is_within_block_range and index_block == self.block_step_single and self.count % self.block_step_N == 0:
+                            self.previous_single_block_residual = hidden_states
                     else:
-                        hidden_states = block(
-                            hidden_states=hidden_states,
-                            temb=temb,
-                            image_rotary_emb=image_rotary_emb,
-                            joint_attention_kwargs=joint_attention_kwargs,
-                        )
-
-                    # controlnet residual
-                    if controlnet_single_block_samples is not None:
-                        interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
-                        interval_control = int(np.ceil(interval_control))
-                        hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
-                            hidden_states[:, encoder_hidden_states.shape[1] :, ...]
-                            + controlnet_single_block_samples[index_block // interval_control]
-                        )
-
+                        if is_within_block_range and index_block == self.block_step_single and self.count % self.block_step_N != 0:
+                            hidden_states = self.previous_single_block_residual
+                        else:
+                            continue
                 hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+                self.count += 1
                 self.previous_residual = hidden_states - ori_hidden_states
         else:
             for index_block, block in enumerate(self.transformer_blocks):
@@ -315,32 +350,3 @@ def TeaCacheForward(
             return (output,)
 
         return Transformer2DModelOutput(sample=output)
-
-from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
-from ppdiffusers import DPMSolverMultistepScheduler
-from ppdiffusers.utils import load_image, export_to_video
-from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
-
-
-seed = 42
-prompt = "An image of a squirrel in Picasso style"
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
-        
-FluxTransformer2DModel.forward = TeaCacheForward
-pipe.transformer.enable_teacache = True
-pipe.transformer.cnt = 0
-pipe.transformer.num_steps = 28
-pipe.transformer.rel_l1_thresh = (
-    0.25  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
-)
-pipe.transformer.accumulated_rel_l1_distance = 0
-pipe.transformer.previous_modulated_input = None
-pipe.transformer.previous_residual = None
-for i in range(2):
-    # pipe.to("cuda")
-    img = pipe(
-        prompt, 
-        num_inference_steps=50,
-        generator=paddle.Generator().manual_seed(seed)
-        ).images[0]
-    img.save("{}.png".format('teacache_new_float16'))

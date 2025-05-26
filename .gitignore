@@ -84,3 +84,5 @@ log/
 .benchmarks/
 .mypy_cache/
 .history
+
+*.png

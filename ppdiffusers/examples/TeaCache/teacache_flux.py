@@ -340,7 +340,7 @@ for i in range(2):
     # pipe.to("cuda")
     img = pipe(
         prompt, 
-        num_inference_steps=50,
+        num_inference_steps=28,
         generator=paddle.Generator().manual_seed(seed)
         ).images[0]
-    img.save("{}.png".format('teacache_new_float16'))
+    img.save("{}.png".format('Teacache_Flux'))

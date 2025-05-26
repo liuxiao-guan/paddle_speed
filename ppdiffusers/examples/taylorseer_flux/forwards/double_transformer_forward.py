@@ -9,9 +9,9 @@ from taylorseer_utils import derivative_approximation, taylor_formula, taylor_ca
 
 def taylorseer_flux_double_block_forward(
     self: FluxTransformerBlock,
-    hidden_states: paddle.FloatTensor,
-    encoder_hidden_states: paddle.FloatTensor,
-    temb: paddle.FloatTensor,
+    hidden_states: paddle.Tensor,
+    encoder_hidden_states: paddle.Tensor,
+    temb: paddle.Tensor,
     image_rotary_emb=None,
     joint_attention_kwargs=None,
 ):

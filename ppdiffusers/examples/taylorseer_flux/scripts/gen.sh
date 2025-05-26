@@ -76,4 +76,24 @@ CUDA_VISIBLE_DEVICES=3 python generation.py \
 --teacache
 
 
+CUDA_VISIBLE_DEVICES=4 python generation.py \
+--inference_step 28 \
+--seed 124 \
+--dataset '300Prompt' \
+--anno_path /root/paddlejob/workspace/env_run/test_data/coco1k \
+--firstblock_taylorseer 
 
+
+CUDA_VISIBLE_DEVICES=4 python generation.py \
+--inference_step 50 \
+--seed 124 \
+--dataset 'coco1k' \
+--anno_path /root/paddlejob/workspace/env_run/test_data/coco1k \
+--firstblock_taylorseer 
+
+CUDA_VISIBLE_DEVICES=4 python generation.py \
+--inference_step 28 \
+--seed 124 \
+--dataset '300Prompt' \
+--anno_path /root/paddlejob/workspace/env_run/test_data/coco1k \
+--firstblock_taylorseer_block 

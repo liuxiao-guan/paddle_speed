@@ -35,7 +35,7 @@ def taylorseer_flux_forward(
     hidden_states: paddle.Tensor,
     encoder_hidden_states: paddle.Tensor = None,
     pooled_projections: paddle.Tensor = None,
-    timestep: paddle.LongTensor = None,
+    timestep: paddle.Tensor = None,
     img_ids: paddle.Tensor = None,
     txt_ids: paddle.Tensor = None,
     guidance: paddle.Tensor = None,
@@ -44,7 +44,7 @@ def taylorseer_flux_forward(
     controlnet_single_block_samples=None,
     return_dict: bool = True,
     controlnet_blocks_repeat: bool = False,
-) -> Union[paddle.FloatTensor, Transformer2DModelOutput]:
+) -> Union[paddle.Tensor, Transformer2DModelOutput]:
     """
     The [`FluxTransformer2DModel`] forward method.
     Args:

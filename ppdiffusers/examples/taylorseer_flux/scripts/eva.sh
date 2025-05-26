@@ -59,5 +59,5 @@ CUDA_VISIBLE_DEVICES=3 python evaluation.py \
 --seed 124 \
 --training_path /root/paddlejob/workspace/env_run/test_data/coco1k/1k \
 --generation_path /root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed/origin_50steps_coco1k \
---speed_generation_path /root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed/firstblock_taylorseer0.07_coco1k \
+--speed_generation_path /root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed/teacache_taylor_predict_coco1k_O1 \
 --resolution 1024 

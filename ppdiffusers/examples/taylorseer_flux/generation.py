@@ -7,14 +7,14 @@ import paddle
 from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
 from tqdm import tqdm
 
-from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
+# from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
 from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
 from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 from ppdiffusers.models import FluxTeaCacheTransformer2DModel
 from teacache_forward import TeaCacheForward
-
+from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward
 # from ..taylorseer_flux.forwards.double_transformer_forward import taylorseer_flux_double_block_forward
 # from ..taylorseer_flux.forwards.single_transformer_forward import taylorseer_flux_single_block_forward
 # from ..taylorseer_flux.forwards.xfuser_flux_forward import xfuser_flux_forward
@@ -112,6 +112,21 @@ def parse_args():
         default=False, 
         help='do add taylorsteer',
     )
+    
+    parser.add_argument(
+        '--firstblock_taylorseer', 
+        action='store_true', 
+        default=False, 
+        help='do add firstblock taylorsteer',
+    )
+    
+    parser.add_argument(
+        '--firstblock_taylorseer_block', 
+        action='store_true', 
+        default=False, 
+        help='do add firstblock taylorsteer block',
+    )
+
     parser.add_argument(
         '--origin', 
         action='store_true', 
@@ -143,6 +158,9 @@ if __name__ == '__main__':
     # 获取prompt
     if args.dataset == "coco10k":
         all_prompts = pickle.load(open(args.anno_path, "rb"))
+    elif args.dataset == "300Prompt":
+        with open('/root/paddlejob/workspace/env_run/test_data/prompt.txt', 'r', encoding='utf-8') as f:
+            all_prompts = [line.strip() for line in f if line.strip()]
     else:
         import pandas as pd
         # 读取 .tsv 文件（tab 分隔）
@@ -220,7 +238,116 @@ if __name__ == '__main__':
             ).images[0]
             image.save(os.path.join(saved_path, f"{i}.png"))
 
-    
+    if args.firstblock_taylorseer == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+        #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
+
+        # TaylorSeer settings
+        pipe.transformer.__class__.num_steps = args.inference_step
+
+        pipe.transformer.__class__.forward = FirstBlock_taylor_predict_Forward
+
+        # for double_transformer_block in pipe.transformer.transformer_blocks:
+        #     double_transformer_block.__class__.forward = taylorseer_flux_double_block_forward
+            
+        # for single_transformer_block in pipe.transformer.single_transformer_blocks:
+        #     single_transformer_block.__class__.forward = taylorseer_flux_single_block_forward
+
+        pipe.transformer.enable_teacache = True
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = 13
+        pipe.transformer.residual_diff_threshold = (
+            0.09 #0.05  7.6s 
+        )
+        pipe.transformer.downsample_factor=(1)
+        pipe.transformer.accumulated_rel_l1_distance = 0
+        pipe.transformer.prev_first_hidden_states_residual = None
+        pipe.transformer.previous_residual = None
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.10_300_28")
+        else:
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.07_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+        seed_list = []
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            # if i==3 or i == 47 or i == 251 or i==292:
+                # a =  paddle.get_cuda_rng_state()
+                #paddle.save(generator.get_state(), f"generator_state_{i}.pt")
+            image = pipe(
+                prompt=prompt,
+                height=1024,
+                width=1024,
+                guidance_scale=3.5,
+                max_sequence_length=512,
+                num_inference_steps=args.inference_step,
+                generator=generator,
+            ).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
+    if args.firstblock_taylorseer_block == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+        #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
+
+        # TaylorSeer settings
+        pipe.transformer.__class__.num_steps = args.inference_step
+
+        pipe.transformer.__class__.forward = FirstBlock_taylor_block_predict_Forward
+
+        # for double_transformer_block in pipe.transformer.transformer_blocks:
+        #     double_transformer_block.__class__.forward = taylorseer_flux_double_block_forward
+            
+        # for single_transformer_block in pipe.transformer.single_transformer_blocks:
+        #     single_transformer_block.__class__.forward = taylorseer_flux_single_block_forward
+
+        pipe.transformer.enable_teacache = True
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = 28
+
+            
+
+        pipe.transformer.residual_diff_threshold = (
+            0.09 #0.05  7.6s 
+        )
+        pipe.transformer.downsample_factor=(1)
+        pipe.transformer.accumulated_rel_l1_distance = 0
+        pipe.transformer.prev_first_hidden_states_residual = None
+        pipe.transformer.previous_residual = None
+        pipe.transformer.previous_block_residual = None
+        pipe.transformer.previous_block_encoder_residual = None
+        pipe.transformer.previous_single_block_residual = None
+        pipe.transformer.step_start = 100
+        pipe.transformer.step_end = 800
+        pipe.transformer.block_step_single = 28
+        pipe.transformer.block_step = 13
+        pipe.transformer.block_step_N = 2
+        pipe.transformer.count = 0
+
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer_block3_300_28")
+        else:
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.07_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            # if i==3 or i == 47 or i == 251 or i==292:
+                # a =  paddle.get_cuda_rng_state()
+                #paddle.save(generator.get_state(), f"generator_state_{i}.pt")
+            image = pipe(
+                prompt=prompt,
+                height=1024,
+                width=1024,
+                guidance_scale=3.5,
+                max_sequence_length=512,
+                num_inference_steps=args.inference_step,
+                generator=generator,
+            ).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
+   
+
+
     
 
     

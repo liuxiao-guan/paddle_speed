@@ -2,7 +2,7 @@ import os
 import argparse
 import paddle
 
-from tgates import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
+from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
 from common_metrics.fid_score import ImagePathDataset,calculate_fid_given_paths
 from common_metrics.inception import InceptionV3
 from common_metrics.calculate_ssim import calculate_ssim_function
@@ -123,17 +123,10 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    if args.prompt:
-        saved_path = os.path.join(args.saved_path, 'test.png')
-    elif args.image:
-        saved_path = os.path.join(args.saved_path, 'test.mp4')
 
-    # Create generator if seed is provided
-    generator = None
-    if args.seed is not None:
-        generator = paddle.Generator().manual_seed(args.seed)
-    
+    # 获取原始方法生成的图片
     gen_path = pathlib.Path(args.generation_path)
+    # 进行排序 因为psnr 与 ssim需要同prompt 图片进行对比
     gen_files = sorted([file for ext in IMAGE_EXTENSIONS for file in gen_path.glob("*.{}".format(ext))],key=extract_number)
     dataset_gen = ImagePathDataset(gen_files, transforms=TF.ToTensor(), resolution=args.resolution)
     dataloader_gen = paddle.io.DataLoader(
@@ -143,6 +136,7 @@ if __name__ == '__main__':
         drop_last=False,
         num_workers=args.num_workers,
     )
+    #获取使用推理加速的方法
     speedgen_path = pathlib.Path(args.speed_generation_path)
     files = sorted([file for ext in IMAGE_EXTENSIONS for file in speedgen_path.glob("*.{}".format(ext))],key=extract_number)
     dataset_speedgen = ImagePathDataset(files, transforms=TF.ToTensor(), resolution=args.resolution)
@@ -157,6 +151,7 @@ if __name__ == '__main__':
     print(len(dataloader_speedgen))
     ssim_value_list=[]
     psnr_value_list=[]
+    # 计算ssim与psnr
     for batch_gen, batch_speedgen in tqdm(zip(dataloader_gen, dataloader_speedgen),
                                        total=len(dataloader_gen),
                                        desc="Calculating SSIM and PSNR"):
@@ -168,6 +163,7 @@ if __name__ == '__main__':
         psnr_value = img_psnr(batch_gen,batch_speedgen)
         ssim_value_list.append(ssim_value)
         psnr_value_list.append(psnr_value)
+    # 计算fid
     fid_value_origin = calculate_fid_given_paths(
         [args.training_path,args.generation_path], args.fid_batch_size,args.dims, args.num_workers, resolution=args.resolution
     )
@@ -181,6 +177,7 @@ if __name__ == '__main__':
     path = Path(args.generation_path)
     parent_path = path.parent
     # os.makedirs(save_dir, exist_ok=True)
+    # 将对应的指标保存起来
     res_txt = os.path.basename(args.speed_generation_path)
     with open(os.path.join(parent_path, f"{res_txt}.txt"), "w") as f:  # ← 注意这里用 "a"
         f.write(f"mean_ssim: {mean_ssim}\n")

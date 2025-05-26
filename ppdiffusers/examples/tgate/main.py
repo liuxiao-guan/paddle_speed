@@ -143,7 +143,7 @@ if __name__ == '__main__':
         image.save(saved_path)
     elif args.model == "flux":
         pipe = FluxPipeline.from_pretrained(
-                "black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+                "black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
         pipe = TgateFLUXLoader(pipe)
         image = pipe.tgate(
             prompt=args.prompt,

@@ -4,8 +4,8 @@ from ppdiffusers.models.transformer_flux import FluxSingleTransformerBlock
 from taylorseer_utils import derivative_approximation, taylor_formula, taylor_cache_init
 def taylorseer_flux_single_block_forward(
     self: FluxSingleTransformerBlock,
-    hidden_states: paddle.FloatTensor,
-    temb: paddle.FloatTensor,
+    hidden_states: paddle.Tensor,
+    temb: paddle.Tensor,
     image_rotary_emb=None,
     joint_attention_kwargs=None,
 ):

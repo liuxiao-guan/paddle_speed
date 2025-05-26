@@ -6,8 +6,11 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from ppdiffusers.models.modeling_outputs import  Transformer2DModelOutput
 from ppdiffusers.utils import USE_PEFT_BACKEND, is_torch_version, logger, scale_lora_layers, unscale_lora_layers
+from cache_functions import cache_init_step, cal_type
+from taylorseer_utils import step_taylor_formula,step_derivative_approximation
 
-def TeaCacheForward(
+
+def TeaCache_taylor_predict_Forward(
         self,
         hidden_states: paddle.Tensor,
         encoder_hidden_states: paddle.Tensor = None,
@@ -48,6 +51,11 @@ def TeaCacheForward(
             If `return_dict` is True, an [`~models.transformer_2d.Transformer2DModelOutput`] is returned, otherwise a
             `tuple` where the first element is the sample tensor.
         """
+        if joint_attention_kwargs is None:
+                joint_attention_kwargs = {}
+        if joint_attention_kwargs.get("cache_dic", None) is None:
+            joint_attention_kwargs['cache_dic'], joint_attention_kwargs['current'] = cache_init_step(self)
+
         if joint_attention_kwargs is not None:
             joint_attention_kwargs = joint_attention_kwargs.copy()
             lora_scale = joint_attention_kwargs.pop("scale", 1.0)
@@ -126,12 +134,16 @@ def TeaCacheForward(
             self.cnt += 1
             if self.cnt == self.num_steps:
                 self.cnt = 0
-
+        cache_dic = joint_attention_kwargs['cache_dic']
+        current = joint_attention_kwargs['current']
         if self.enable_teacache:
             if not should_calc:
-                hidden_states += self.previous_residual
+                #hidden_states += self.previous_residual
+                hidden_states = step_taylor_formula(cache_dic=cache_dic, current=current)
+
             else:
                 ori_hidden_states = hidden_states.clone()
+                current['activated_steps'].append(current['step'])
                 for index_block, block in enumerate(self.transformer_blocks):
                     if self.training and self.gradient_checkpointing:
 
@@ -162,7 +174,7 @@ def TeaCacheForward(
                             encoder_hidden_states=encoder_hidden_states,
                             temb=temb,
                             image_rotary_emb=image_rotary_emb,
-                            joint_attention_kwargs=joint_attention_kwargs,
+                           # joint_attention_kwargs=joint_attention_kwargs,
                         )
 
                     # controlnet residual
@@ -206,7 +218,7 @@ def TeaCacheForward(
                             hidden_states=hidden_states,
                             temb=temb,
                             image_rotary_emb=image_rotary_emb,
-                            joint_attention_kwargs=joint_attention_kwargs,
+                            #joint_attention_kwargs=joint_attention_kwargs,
                         )
 
                     # controlnet residual
@@ -219,6 +231,7 @@ def TeaCacheForward(
                         )
 
                 hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+                step_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
                 self.previous_residual = hidden_states - ori_hidden_states
         else:
             for index_block, block in enumerate(self.transformer_blocks):
@@ -310,37 +323,8 @@ def TeaCacheForward(
         if USE_PEFT_BACKEND:
             # remove `lora_scale` from each PEFT layer
             unscale_lora_layers(self, lora_scale)
-
+        joint_attention_kwargs['current']['step'] += 1
         if not return_dict:
             return (output,)
 
         return Transformer2DModelOutput(sample=output)
-
-from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
-from ppdiffusers import DPMSolverMultistepScheduler
-from ppdiffusers.utils import load_image, export_to_video
-from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
-
-
-seed = 42
-prompt = "An image of a squirrel in Picasso style"
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
-        
-FluxTransformer2DModel.forward = TeaCacheForward
-pipe.transformer.enable_teacache = True
-pipe.transformer.cnt = 0
-pipe.transformer.num_steps = 28
-pipe.transformer.rel_l1_thresh = (
-    0.25  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
-)
-pipe.transformer.accumulated_rel_l1_distance = 0
-pipe.transformer.previous_modulated_input = None
-pipe.transformer.previous_residual = None
-for i in range(2):
-    # pipe.to("cuda")
-    img = pipe(
-        prompt, 
-        num_inference_steps=50,
-        generator=paddle.Generator().manual_seed(seed)
-        ).images[0]
-    img.save("{}.png".format('teacache_new_float16'))
