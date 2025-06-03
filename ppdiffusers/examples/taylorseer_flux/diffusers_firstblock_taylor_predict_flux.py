@@ -15,7 +15,7 @@ from forwards import (taylorseer_flux_single_block_forward,
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
-num_inference_steps = 28
+num_inference_steps = 50
 seed = 42
 
 prompt = "An image of a squirrel in Picasso style"
@@ -35,7 +35,7 @@ pipe.transformer.__class__.forward = FirstBlock_taylor_predict_Forward
 
 pipe.transformer.enable_teacache = True
 pipe.transformer.cnt = 0
-pipe.transformer.num_steps = 13
+pipe.transformer.num_steps = 50
 
     
 
@@ -46,7 +46,7 @@ pipe.transformer.downsample_factor=(1)
 pipe.transformer.accumulated_rel_l1_distance = 0
 pipe.transformer.prev_first_hidden_states_residual = None
 pipe.transformer.previous_residual = None
-# pipeline.to("cuda")
+# pipe.to("cuda")
 
 parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
 

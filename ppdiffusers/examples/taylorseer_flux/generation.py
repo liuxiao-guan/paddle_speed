@@ -255,9 +255,9 @@ if __name__ == '__main__':
 
         pipe.transformer.enable_teacache = True
         pipe.transformer.cnt = 0
-        pipe.transformer.num_steps = 13
+        pipe.transformer.num_steps = 28
         pipe.transformer.residual_diff_threshold = (
-            0.09 #0.05  7.6s 
+            0.08 #0.05  7.6s 
         )
         pipe.transformer.downsample_factor=(1)
         pipe.transformer.accumulated_rel_l1_distance = 0
@@ -266,7 +266,7 @@ if __name__ == '__main__':
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_taylorseer")
         elif args.dataset == "300Prompt":
-            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.10_300_28")
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.08_300_28")
         else:
             saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.07_coco1k")
         os.makedirs(saved_path, exist_ok=True)
