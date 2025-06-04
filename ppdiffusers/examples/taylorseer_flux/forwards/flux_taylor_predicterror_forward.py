@@ -6,8 +6,27 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from ppdiffusers.models.modeling_outputs import  Transformer2DModelOutput
 from ppdiffusers.utils import USE_PEFT_BACKEND, is_torch_version, logger, scale_lora_layers, unscale_lora_layers
+from cache_functions import cache_init_step, cal_type
+from taylorseer_utils import step_taylor_formula,step_derivative_approximation
+from first_block_utils import all_reduce_sync
 
-def TeaCacheForward(
+
+
+def are_two_tensors_similar(t1, t2, *, threshold, parallelized=False):
+    if threshold <= 0.0:
+        return False
+
+    if t1.shape != t2.shape:
+        return False
+
+    mean_diff = (t1 - t2).abs().mean()
+    mean_t1 = t1.abs().mean()
+    if parallelized:
+        mean_diff = all_reduce_sync(mean_diff, "avg")
+        mean_t1 =all_reduce_sync(mean_t1, "avg")
+    diff = mean_diff / mean_t1
+    return diff.item() < threshold
+def Taylor_predicterror_Forward(
         self,
         hidden_states: paddle.Tensor,
         encoder_hidden_states: paddle.Tensor = None,
@@ -48,6 +67,11 @@ def TeaCacheForward(
             If `return_dict` is True, an [`~models.transformer_2d.Transformer2DModelOutput`] is returned, otherwise a
             `tuple` where the first element is the sample tensor.
         """
+        if joint_attention_kwargs is None:
+                joint_attention_kwargs = {}
+        if joint_attention_kwargs.get("cache_dic", None) is None:
+            joint_attention_kwargs['cache_dic'], joint_attention_kwargs['current'] = cache_init_step(self)
+
         if joint_attention_kwargs is not None:
             joint_attention_kwargs = joint_attention_kwargs.copy()
             lora_scale = joint_attention_kwargs.pop("scale", 1.0)
@@ -100,39 +124,57 @@ def TeaCacheForward(
             joint_attention_kwargs.update({"ip_hidden_states": ip_hidden_states})
 
         if self.enable_teacache:
-            inp = hidden_states.clone()
-            temb_ = temb.clone()
-            modulated_inp, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.transformer_blocks[0].norm1(inp, emb=temb_)
+        
             if self.cnt == 0 or self.cnt == self.num_steps - 1:
                 should_calc = True
-                self.accumulated_rel_l1_distance = 0
+                self.prev_first_hidden_states_residual = None
+                self.predict_hidden_states=None
+                self.predict_loss=None
+                
             else:
-                coefficients = [4.98651651e02, -2.83781631e02, 5.58554382e01, -3.82021401e00, 2.64230861e-01]
-                rescale_func = np.poly1d(coefficients)
-                self.accumulated_rel_l1_distance += rescale_func(
-                    (
-                        (modulated_inp - self.previous_modulated_input).abs().mean()
-                        / self.previous_modulated_input.abs().mean()
-                    )
-                    .cpu()
-                    .item()
-                )
-                if self.accumulated_rel_l1_distance < self.rel_l1_thresh:
-                    should_calc = False
+                if self.predict_hidden_states is  None  or (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0):
+                    can_use_cache = False
                 else:
-                    should_calc = True
-                    self.accumulated_rel_l1_distance = 0
-            self.previous_modulated_input = modulated_inp
+                    self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.predict_hidden_states.abs().mean()
+                    can_use_cache = self.predict_loss < self.threshold
+                # if self.predict_hidden_states is not None or not (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0) :
+                #     self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.predict_hidden_states.abs().mean()
+                #     can_use_cache = self.predict_loss < self.threshold
+                # else:
+                #     can_use_cache = False
+                
+                should_calc = not can_use_cache
+                # if can_use_cache:
+                #     self.pre_compute_hidden= self.predict_hidden_states.clone()
+                # if can_use_cache == False:
+                #     self.prev_first_hidden_states_residual = first_hidden_states_residual.clone()
+                
+                # if self.accumulated_rel_l1_distance < self.rel_l1_thresh:
+                #     should_calc = False
+                # else:
+                #     should_calc = True
+                #     self.accumulated_rel_l1_distance = 0
+            
             self.cnt += 1
             if self.cnt == self.num_steps:
                 self.cnt = 0
 
+        cache_dic = joint_attention_kwargs['cache_dic']
+        current = joint_attention_kwargs['current']
         if self.enable_teacache:
             if not should_calc:
-                hidden_states += self.previous_residual
+                #hidden_states += self.previous_residual
+                hidden_states = step_taylor_formula(cache_dic=cache_dic, current=current)
+                self.predict_hidden_states = hidden_states.clone()
+
             else:
-                ori_hidden_states = hidden_states.clone()
+                self.predict_hidden_states = paddle.to_tensor(step_taylor_formula(cache_dic=cache_dic, current=current))
+                # ori_hidden_states = hidden_states.clone()
+                current['activated_steps'].append(current['step'])
                 for index_block, block in enumerate(self.transformer_blocks):
+                    # #因为上面已经算了现在就不应该算了
+                    # if index_block == 0:
+                    #     continue
                     if self.training and self.gradient_checkpointing:
 
                         def create_custom_forward(module, return_dict=None):
@@ -162,7 +204,7 @@ def TeaCacheForward(
                             encoder_hidden_states=encoder_hidden_states,
                             temb=temb,
                             image_rotary_emb=image_rotary_emb,
-                            joint_attention_kwargs=joint_attention_kwargs,
+                           # joint_attention_kwargs=joint_attention_kwargs,
                         )
 
                     # controlnet residual
@@ -206,7 +248,7 @@ def TeaCacheForward(
                             hidden_states=hidden_states,
                             temb=temb,
                             image_rotary_emb=image_rotary_emb,
-                            joint_attention_kwargs=joint_attention_kwargs,
+                            #joint_attention_kwargs=joint_attention_kwargs,
                         )
 
                     # controlnet residual
@@ -219,90 +261,92 @@ def TeaCacheForward(
                         )
 
                 hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
-                self.previous_residual = hidden_states - ori_hidden_states
-        else:
-            for index_block, block in enumerate(self.transformer_blocks):
-                if self.training and self.gradient_checkpointing:
+                step_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
+                self.pre_compute_hidden = hidden_states.clone()
+                # self.previous_residual = hidden_states - ori_hidden_states
+        # else:
+        #     for index_block, block in enumerate(self.transformer_blocks):
+        #         if self.training and self.gradient_checkpointing:
 
-                    def create_custom_forward(module, return_dict=None):
-                        def custom_forward(*inputs):
-                            if return_dict is not None:
-                                return module(*inputs, return_dict=return_dict)
-                            else:
-                                return module(*inputs)
+        #             def create_custom_forward(module, return_dict=None):
+        #                 def custom_forward(*inputs):
+        #                     if return_dict is not None:
+        #                         return module(*inputs, return_dict=return_dict)
+        #                     else:
+        #                         return module(*inputs)
 
-                        return custom_forward
+        #                 return custom_forward
 
-                    ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
-                    encoder_hidden_states, hidden_states = paddle.utils.checkpoint.checkpoint(
-                        create_custom_forward(block),
-                        hidden_states,
-                        encoder_hidden_states,
-                        temb,
-                        image_rotary_emb,
-                        **ckpt_kwargs,
-                    )
+        #             ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
+        #             encoder_hidden_states, hidden_states = paddle.utils.checkpoint.checkpoint(
+        #                 create_custom_forward(block),
+        #                 hidden_states,
+        #                 encoder_hidden_states,
+        #                 temb,
+        #                 image_rotary_emb,
+        #                 **ckpt_kwargs,
+        #             )
 
-                else:
-                    encoder_hidden_states, hidden_states = block(
-                        hidden_states=hidden_states,
-                        encoder_hidden_states=encoder_hidden_states,
-                        temb=temb,
-                        image_rotary_emb=image_rotary_emb,
-                        joint_attention_kwargs=joint_attention_kwargs,
-                    )
+        #         else:
+        #             encoder_hidden_states, hidden_states = block(
+        #                 hidden_states=hidden_states,
+        #                 encoder_hidden_states=encoder_hidden_states,
+        #                 temb=temb,
+        #                 image_rotary_emb=image_rotary_emb,
+        #                 joint_attention_kwargs=joint_attention_kwargs,
+        #             )
 
-                # controlnet residual
-                if controlnet_block_samples is not None:
-                    interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
-                    interval_control = int(np.ceil(interval_control))
-                    # For Xlabs ControlNet.
-                    if controlnet_blocks_repeat:
-                        hidden_states = (
-                            hidden_states + controlnet_block_samples[index_block % len(controlnet_block_samples)]
-                        )
-                    else:
-                        hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
-            hidden_states = paddle.concat([encoder_hidden_states, hidden_states], axis=1)
+        #         # controlnet residual
+        #         if controlnet_block_samples is not None:
+        #             interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
+        #             interval_control = int(np.ceil(interval_control))
+        #             # For Xlabs ControlNet.
+        #             if controlnet_blocks_repeat:
+        #                 hidden_states = (
+        #                     hidden_states + controlnet_block_samples[index_block % len(controlnet_block_samples)]
+        #                 )
+        #             else:
+        #                 hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
+        #     hidden_states = paddle.concat([encoder_hidden_states, hidden_states], axis=1)
 
-            for index_block, block in enumerate(self.single_transformer_blocks):
-                if self.training and self.gradient_checkpointing:
+        #     for index_block, block in enumerate(self.single_transformer_blocks):
+        #         if self.training and self.gradient_checkpointing:
 
-                    def create_custom_forward(module, return_dict=None):
-                        def custom_forward(*inputs):
-                            if return_dict is not None:
-                                return module(*inputs, return_dict=return_dict)
-                            else:
-                                return module(*inputs)
+        #             def create_custom_forward(module, return_dict=None):
+        #                 def custom_forward(*inputs):
+        #                     if return_dict is not None:
+        #                         return module(*inputs, return_dict=return_dict)
+        #                     else:
+        #                         return module(*inputs)
 
-                        return custom_forward
+        #                 return custom_forward
 
-                    ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
-                    hidden_states = paddle.utils.checkpoint.checkpoint(
-                        create_custom_forward(block),
-                        hidden_states,
-                        temb,
-                        image_rotary_emb,
-                        **ckpt_kwargs,
-                    )
+        #             ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
+        #             hidden_states = paddle.utils.checkpoint.checkpoint(
+        #                 create_custom_forward(block),
+        #                 hidden_states,
+        #                 temb,
+        #                 image_rotary_emb,
+        #                 **ckpt_kwargs,
+        #             )
 
-                else:
-                    hidden_states = block(
-                        hidden_states=hidden_states,
-                        temb=temb,
-                        image_rotary_emb=image_rotary_emb,
-                        joint_attention_kwargs=joint_attention_kwargs,
-                    )
+        #         else:
+        #             hidden_states = block(
+        #                 hidden_states=hidden_states,
+        #                 temb=temb,
+        #                 image_rotary_emb=image_rotary_emb,
+        #                 joint_attention_kwargs=joint_attention_kwargs,
+        #             )
 
-                # controlnet residual
-                if controlnet_single_block_samples is not None:
-                    interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
-                    interval_control = int(np.ceil(interval_control))
-                    hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
-                        hidden_states[:, encoder_hidden_states.shape[1] :, ...]
-                        + controlnet_single_block_samples[index_block // interval_control]
-                    )
-            hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+        #         # controlnet residual
+        #         if controlnet_single_block_samples is not None:
+        #             interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
+        #             interval_control = int(np.ceil(interval_control))
+        #             hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
+        #                 hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+        #                 + controlnet_single_block_samples[index_block // interval_control]
+        #             )
+        #     hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
 
         hidden_states = self.norm_out(hidden_states, temb)
         output = self.proj_out(hidden_states)
@@ -310,37 +354,8 @@ def TeaCacheForward(
         if USE_PEFT_BACKEND:
             # remove `lora_scale` from each PEFT layer
             unscale_lora_layers(self, lora_scale)
-
+        joint_attention_kwargs['current']['step'] += 1
         if not return_dict:
             return (output,)
 
         return Transformer2DModelOutput(sample=output)
-
-from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
-from ppdiffusers import DPMSolverMultistepScheduler
-from ppdiffusers.utils import load_image, export_to_video
-from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
-
-
-seed = 42
-prompt = "An image of a squirrel in Picasso style"
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
-        
-FluxTransformer2DModel.forward = TeaCacheForward
-pipe.transformer.enable_teacache = True
-pipe.transformer.cnt = 0
-pipe.transformer.num_steps = 28
-pipe.transformer.rel_l1_thresh = (
-    0.25  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
-)
-pipe.transformer.accumulated_rel_l1_distance = 0
-pipe.transformer.previous_modulated_input = None
-pipe.transformer.previous_residual = None
-for i in range(2):
-    # pipe.to("cuda")
-    img = pipe(
-        prompt, 
-        num_inference_steps=50,
-        generator=paddle.Generator().manual_seed(seed)
-        ).images[0]
-    img.save("{}.png".format('Teacache_Flux'))

@@ -68,16 +68,16 @@ CUDA_VISIBLE_DEVICES=2 python generation.py \
 --teacache_taylor_predict 
 
 
-CUDA_VISIBLE_DEVICES=3 python generation.py \
---inference_step 28 \
+CUDA_VISIBLE_DEVICES=2 python generation.py \
+--inference_step 50 \
 --seed 124 \
 --dataset '300Prompt' \
 --anno_path /root/paddlejob/workspace/env_run/test_data/coco1k \
---teacache
+--origin
 
 
-CUDA_VISIBLE_DEVICES=4 python generation.py \
---inference_step 28 \
+CUDA_VISIBLE_DEVICES=3 python generation.py \
+--inference_step 50 \
 --seed 124 \
 --dataset '300Prompt' \
 --anno_path /root/paddlejob/workspace/env_run/test_data/coco1k \
@@ -89,7 +89,7 @@ CUDA_VISIBLE_DEVICES=4 python generation.py \
 --seed 124 \
 --dataset 'coco1k' \
 --anno_path /root/paddlejob/workspace/env_run/test_data/coco1k \
---firstblock_taylorseer 
+--predicterror_taylorseer_block
 
 CUDA_VISIBLE_DEVICES=4 python generation.py \
 --inference_step 28 \

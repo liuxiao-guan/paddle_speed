@@ -40,12 +40,14 @@ pipe.transformer.num_steps = 50
     
 
 pipe.transformer.residual_diff_threshold = (
-    0.09 #0.05  7.6s 
+    0.07 #0.05  7.6s 
 )
 pipe.transformer.downsample_factor=(1)
 pipe.transformer.accumulated_rel_l1_distance = 0
 pipe.transformer.prev_first_hidden_states_residual = None
 pipe.transformer.previous_residual = None
+
+
 # pipe.to("cuda")
 
 parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
