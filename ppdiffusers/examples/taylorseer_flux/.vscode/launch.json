@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: python diffusers_taylor_predicterror_flux.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_predicterror_flux.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "3"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        },
+        {
+            "name": "Python: python diffusers_taylor_predicterrorstop_flux.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_predicterrorstop_flux.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "3"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        },
+        {
+            "name": "Python: python diffusers_taylor_firstblock_predicterror_flux.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_firstblock_predicterror_flux.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        }
+    ]
+}

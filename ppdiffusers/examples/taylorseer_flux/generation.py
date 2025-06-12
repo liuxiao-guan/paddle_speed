@@ -9,12 +9,12 @@ from tqdm import tqdm
 
 # from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
 from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
-from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
+from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline,PyramidAttentionBroadcastConfig, apply_pyramid_attention_broadcast
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 from ppdiffusers.models import FluxTeaCacheTransformer2DModel
 from teacache_forward import TeaCacheForward
-from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward,Taylor_predicterror_Forward
+from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward,Taylor_predicterror_Forward,BlockDanceForward,Taylor_predicterror_base_Forward
 # from ..taylorseer_flux.forwards.double_transformer_forward import taylorseer_flux_double_block_forward
 # from ..taylorseer_flux.forwards.single_transformer_forward import taylorseer_flux_single_block_forward
 # from ..taylorseer_flux.forwards.xfuser_flux_forward import xfuser_flux_forward
@@ -101,6 +101,18 @@ def parse_args():
         help='do add tgate',
     )
     parser.add_argument(
+        '--pab', 
+        action='store_true', 
+        default=False, 
+        help='do add pab',
+    )
+    parser.add_argument(
+        '--blockdance', 
+        action='store_true', 
+        default=False, 
+        help='do add blockdance',
+    )
+    parser.add_argument(
         '--teacache', 
         action='store_true', 
         default=False, 
@@ -132,7 +144,13 @@ def parse_args():
         default=False, 
         help='do add predicterror taylorsteer',
     )
-
+    
+    parser.add_argument(
+        '--predicterror_taylorseer_block_base', 
+        action='store_true', 
+        default=False, 
+        help='do add predicterror taylorseer block base',
+    )
 
     parser.add_argument(
         '--origin', 
@@ -226,6 +244,67 @@ if __name__ == '__main__':
                 generator=generator,
             ).images[0]
             image.save(os.path.join(saved_path, f"{i}.png"))
+    if args.pab == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+
+        config = PyramidAttentionBroadcastConfig(
+            spatial_attention_block_skip_range=14,
+            temporal_attention_block_skip_range = 2,
+            cross_attention_block_skip_range = 4,
+            spatial_attention_timestep_skip_range=(100, 950),
+            current_timestep_callback=lambda: pipe._current_timestep,
+        )
+        apply_pyramid_attention_broadcast(pipe.transformer, config)
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"pab")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"pab_300")
+        else:
+            saved_path = os.path.join(args.saved_path,"pab_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            image = pipe(
+                prompt=prompt,
+                height=1024,
+                width=1024,
+                guidance_scale=3.5,
+                max_sequence_length=512,
+                num_inference_steps=args.inference_step,
+                generator=generator,
+            ).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
+    if args.blockdance == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+        FluxTransformer2DModel.forward = BlockDanceForward
+
+        pipe.transformer.previous_block = None
+        pipe.transformer.previous_block_encoder = None
+        pipe.transformer.previous_single_block = None
+        pipe.transformer.step_start = 100
+        pipe.transformer.step_end = 950
+        pipe.transformer.block_step_single = 30
+        pipe.transformer.block_step = 15
+        pipe.transformer.block_step_N = 8
+        pipe.transformer.count = 0
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"blockdance")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"blockdance_300")
+        else:
+            saved_path = os.path.join(args.saved_path,"blockdance_R950_B30-15_N8_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            image = pipe(
+                prompt=prompt,
+                height=1024,
+                width=1024,
+                guidance_scale=3.5,
+                max_sequence_length=512,
+                num_inference_steps=args.inference_step,
+                generator=generator,
+            ).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
+
     # 加入teacache 方法的
     if args.teacache == True :
 
@@ -260,6 +339,7 @@ if __name__ == '__main__':
             ).images[0]
             image.save(os.path.join(saved_path, f"{i}.png"))
 
+
     if args.firstblock_taylorseer == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
@@ -279,7 +359,7 @@ if __name__ == '__main__':
         pipe.transformer.cnt = 0
         pipe.transformer.num_steps = 50
         pipe.transformer.residual_diff_threshold = (
-            0.07 #0.05  7.6s 
+            0.14 #0.05  7.6s 
         )
         pipe.transformer.downsample_factor=(1)
         pipe.transformer.accumulated_rel_l1_distance = 0
@@ -290,7 +370,7 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.07_300")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.07_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.14_coco1k")
         os.makedirs(saved_path, exist_ok=True)
         seed_list = []
         for i, prompt in enumerate(tqdm(all_prompts)):
@@ -380,13 +460,13 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.20
+        pipe.transformer.threshold= 0.42
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"predicterror_taylorseer")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"predicterror_taylorseer0.20_300")
         else:
-            saved_path = os.path.join(args.saved_path,"predicterror_taylorseer0.20_coco1k")
+            saved_path = os.path.join(args.saved_path,"predicterror_taylorseer0.42_coco1k")
         os.makedirs(saved_path, exist_ok=True)
         seed_list = []
         for i, prompt in enumerate(tqdm(all_prompts)):
@@ -403,7 +483,42 @@ if __name__ == '__main__':
                 generator=generator,
             ).images[0]
             image.save(os.path.join(saved_path, f"{i}.png"))
+    if args.predicterror_taylorseer_block_base == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+        #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
+        pipe.transformer.__class__.forward = Taylor_predicterror_base_Forward
+        pipe.transformer.enable_teacache = True
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = args.inference_step
 
+        pipe.transformer.prev_first_hidden_states_residual = None
+        pipe.transformer.previous_residual = None
+        pipe.transformer.pre_compute_hidden =None
+        pipe.transformer.predict_loss  = None
+        pipe.transformer.predict_hidden_states= None
+        pipe.transformer.threshold= 0.25
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"predicterror_taylorseer_base")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"predicterror_taylorseer_base0.20_300")
+        else:
+            saved_path = os.path.join(args.saved_path,"predicterror_taylorseer_base0.25_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+        seed_list = []
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            # if i==3 or i == 47 or i == 251 or i==292:
+                # a =  paddle.get_cuda_rng_state()
+                #paddle.save(generator.get_state(), f"generator_state_{i}.pt")
+            image = pipe(
+                prompt=prompt,
+                height=1024,
+                width=1024,
+                guidance_scale=3.5,
+                max_sequence_length=512,
+                num_inference_steps=args.inference_step,
+                generator=generator,
+            ).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
 
     
 

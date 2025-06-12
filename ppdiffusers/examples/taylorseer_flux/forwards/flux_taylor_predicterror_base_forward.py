@@ -1,5 +1,4 @@
 from typing import Any, Dict, Optional, Tuple, Union
-from cv2 import threshold
 
 import numpy as np
 import paddle
@@ -27,8 +26,7 @@ def are_two_tensors_similar(t1, t2, *, threshold, parallelized=False):
         mean_t1 =all_reduce_sync(mean_t1, "avg")
     diff = mean_diff / mean_t1
     return diff.item() < threshold
-
-def Taylor_predicterror_Forward(
+def Taylor_predicterror_base_Forward(
         self,
         hidden_states: paddle.Tensor,
         encoder_hidden_states: paddle.Tensor = None,
@@ -126,23 +124,30 @@ def Taylor_predicterror_Forward(
             joint_attention_kwargs.update({"ip_hidden_states": ip_hidden_states})
 
         if self.enable_teacache:
-            
-            
+        
             if self.cnt == 0 or self.cnt == self.num_steps - 1:
                 should_calc = True
-                self.predict_loss = None
-                self.predict_hidden_states = None
+                self.prev_first_hidden_states_residual = None
+                self.predict_hidden_states=None
+                self.predict_loss=None
                 
             else:
-                if not isinstance(self.predict_hidden_states, int) :
-                    self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.predict_hidden_states.abs().mean()
-                    can_use_cache = self.predict_loss < self.threshold
-                else:
+                if self.predict_hidden_states is  None  or (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0):
                     can_use_cache = False
+                else:
+                    self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.pre_compute_hidden.abs().mean()
+                    can_use_cache = self.predict_loss < self.threshold
+                # if self.predict_hidden_states is not None or not (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0) :
+                #     self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.predict_hidden_states.abs().mean()
+                #     can_use_cache = self.predict_loss < self.threshold
+                # else:
+                #     can_use_cache = False
+                
                 should_calc = not can_use_cache
-                if can_use_cache == False:
-                    pass
-                    #self.prev_first_hidden_states_residual = first_hidden_states_residual.clone()
+                # if can_use_cache:
+                #     self.pre_compute_hidden= self.predict_hidden_states.clone()
+                # if can_use_cache == False:
+                #     self.prev_first_hidden_states_residual = first_hidden_states_residual.clone()
                 
                 # if self.accumulated_rel_l1_distance < self.rel_l1_thresh:
                 #     should_calc = False
@@ -153,28 +158,23 @@ def Taylor_predicterror_Forward(
             self.cnt += 1
             if self.cnt == self.num_steps:
                 self.cnt = 0
-                self.predict_hidden_states = None
-           
 
         cache_dic = joint_attention_kwargs['cache_dic']
         current = joint_attention_kwargs['current']
         if self.enable_teacache:
-           
             if not should_calc:
                 #hidden_states += self.previous_residual
                 hidden_states = step_taylor_formula(cache_dic=cache_dic, current=current)
                 self.predict_hidden_states = hidden_states.clone()
 
             else:
-                #self.predict_hidden_states = paddle.to_tensor(step_taylor_formula(cache_dic=cache_dic, current=current))
-                self.predict_hidden_states = paddle.to_tensor(0.0)
+                self.predict_hidden_states = paddle.to_tensor(step_taylor_formula(cache_dic=cache_dic, current=current))
                 # ori_hidden_states = hidden_states.clone()
                 current['activated_steps'].append(current['step'])
-                
                 for index_block, block in enumerate(self.transformer_blocks):
-                    #因为上面已经算了现在就不应该算了
-                    if index_block == 0:
-                        continue
+                    # #因为上面已经算了现在就不应该算了
+                    # if index_block == 0:
+                    #     continue
                     if self.training and self.gradient_checkpointing:
 
                         def create_custom_forward(module, return_dict=None):
@@ -262,9 +262,7 @@ def Taylor_predicterror_Forward(
 
                 hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
                 step_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
-                
                 self.pre_compute_hidden = hidden_states.clone()
-                
                 # self.previous_residual = hidden_states - ori_hidden_states
         # else:
         #     for index_block, block in enumerate(self.transformer_blocks):

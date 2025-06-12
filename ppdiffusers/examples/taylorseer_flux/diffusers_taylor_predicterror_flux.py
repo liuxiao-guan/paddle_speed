@@ -15,10 +15,10 @@ from forwards import (taylorseer_flux_single_block_forward,
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
-num_inference_steps = 28
+num_inference_steps = 50
 seed = 42
 
-prompt = "An image of a squirrel in Picasso style"
+prompt =  "An image of a squirrel in Picasso style"
 pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
 #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
 
@@ -35,7 +35,7 @@ pipe.transformer.previous_residual = None
 pipe.transformer.pre_compute_hidden =None
 pipe.transformer.predict_loss  = None
 pipe.transformer.predict_hidden_states= None
-pipe.transformer.threshold= 0.15
+pipe.transformer.threshold= 0.28
 
 parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
 

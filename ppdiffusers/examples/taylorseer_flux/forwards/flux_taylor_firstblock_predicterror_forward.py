@@ -6,8 +6,8 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from ppdiffusers.models.modeling_outputs import  Transformer2DModelOutput
 from ppdiffusers.utils import USE_PEFT_BACKEND, is_torch_version, logger, scale_lora_layers, unscale_lora_layers
-from cache_functions import cache_init_step, cal_type
-from taylorseer_utils import step_taylor_formula,step_derivative_approximation
+from cache_functions import cache_init_step_block, cal_type
+from taylorseer_utils import firstblock_derivative_approximation, firstblock_taylor_formula, step_taylor_formula,step_derivative_approximation
 from first_block_utils import all_reduce_sync
 
 
@@ -26,7 +26,7 @@ def are_two_tensors_similar(t1, t2, *, threshold, parallelized=False):
         mean_t1 =all_reduce_sync(mean_t1, "avg")
     diff = mean_diff / mean_t1
     return diff.item() < threshold
-def Taylor_predicterror_Forward(
+def Taylor_firstblock_predicterror_Forward(
         self,
         hidden_states: paddle.Tensor,
         encoder_hidden_states: paddle.Tensor = None,
@@ -70,7 +70,7 @@ def Taylor_predicterror_Forward(
         if joint_attention_kwargs is None:
                 joint_attention_kwargs = {}
         if joint_attention_kwargs.get("cache_dic", None) is None:
-            joint_attention_kwargs['cache_dic'], joint_attention_kwargs['current'] = cache_init_step(self)
+            joint_attention_kwargs['cache_dic'], joint_attention_kwargs['current'] = cache_init_step_block(self)
 
         if joint_attention_kwargs is not None:
             joint_attention_kwargs = joint_attention_kwargs.copy()
@@ -122,60 +122,63 @@ def Taylor_predicterror_Forward(
             ip_adapter_image_embeds = joint_attention_kwargs.pop("ip_adapter_image_embeds")
             ip_hidden_states = self.encoder_hid_proj(ip_adapter_image_embeds)
             joint_attention_kwargs.update({"ip_hidden_states": ip_hidden_states})
-
+        cache_dic = joint_attention_kwargs['cache_dic']
+        current = joint_attention_kwargs['current']
         if self.enable_teacache:
-        
+
+            inp = hidden_states.clone()
+            temb_ = temb.clone()
+            pre_firstblock_hidden_states = firstblock_taylor_formula(cache_dic=cache_dic, current=current)
+            current['block_activated_steps'].append(current['step'])
+            encoder_hidden_states, hidden_states= self.transformer_blocks[0](
+                hidden_states=hidden_states,
+                encoder_hidden_states=encoder_hidden_states,
+                temb=temb,
+                image_rotary_emb=image_rotary_emb,
+               # joint_attention_kwargs=joint_attention_kwargs,
+            )
+            # 注意一定要先预测，才去更新当前步taylor得cache 
+            if self.cnt > 2:
+                self.predict_loss = (pre_firstblock_hidden_states - hidden_states).abs().mean()/hidden_states.abs().mean()
+                can_use_cache = self.predict_loss < self.threshold
+            # 要用block得输入来预测
+            
+            firstblock_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
+            
+
             if self.cnt == 0 or self.cnt == self.num_steps - 1:
                 should_calc = True
-                self.prev_first_hidden_states_residual = None
+                self.pre_firstblock_hidden_states = None
                 self.predict_hidden_states=None
                 self.predict_loss=None
                 self.pre_compute_hidden = None
                 
             else:
-                if self.predict_hidden_states is  None  or (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0):
+                if self.predict_loss is None:
                     can_use_cache = False
                 else:
-                    self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.predict_hidden_states.abs().mean()
                     can_use_cache = self.predict_loss < self.threshold
-                # if self.predict_hidden_states is not None or not (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0) :
-                #     self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.predict_hidden_states.abs().mean()
-                #     can_use_cache = self.predict_loss < self.threshold
-                # else:
-                #     can_use_cache = False
-                
                 should_calc = not can_use_cache
-                # if can_use_cache:
-                #     self.pre_compute_hidden= self.predict_hidden_states.clone()
-                # if can_use_cache == False:
-                #     self.prev_first_hidden_states_residual = first_hidden_states_residual.clone()
-                
-                # if self.accumulated_rel_l1_distance < self.rel_l1_thresh:
-                #     should_calc = False
-                # else:
-                #     should_calc = True
-                #     self.accumulated_rel_l1_distance = 0
             
             self.cnt += 1
             if self.cnt == self.num_steps:
                 self.cnt = 0
 
-        cache_dic = joint_attention_kwargs['cache_dic']
-        current = joint_attention_kwargs['current']
+        
         if self.enable_teacache:
             if not should_calc:
                 #hidden_states += self.previous_residual
                 hidden_states = step_taylor_formula(cache_dic=cache_dic, current=current)
-                self.predict_hidden_states = hidden_states.clone()
+                # self.predict_hidden_states = hidden_states.clone()
 
             else:
-                self.predict_hidden_states = paddle.to_tensor(step_taylor_formula(cache_dic=cache_dic, current=current))
+                # self.predict_hidden_states = paddle.to_tensor(step_taylor_formula(cache_dic=cache_dic, current=current))
                 # ori_hidden_states = hidden_states.clone()
                 current['activated_steps'].append(current['step'])
                 for index_block, block in enumerate(self.transformer_blocks):
-                    # #因为上面已经算了现在就不应该算了
-                    # if index_block == 0:
-                    #     continue
+                    #因为上面已经算了现在就不应该算了
+                    if index_block == 0:
+                        continue
                     if self.training and self.gradient_checkpointing:
 
                         def create_custom_forward(module, return_dict=None):
@@ -263,7 +266,7 @@ def Taylor_predicterror_Forward(
 
                 hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
                 step_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
-                self.pre_compute_hidden = hidden_states.clone()
+                # self.pre_compute_hidden = hidden_states.clone()
                 # self.previous_residual = hidden_states - ori_hidden_states
         # else:
         #     for index_block, block in enumerate(self.transformer_blocks):

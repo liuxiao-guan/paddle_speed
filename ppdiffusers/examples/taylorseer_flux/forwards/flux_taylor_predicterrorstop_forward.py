@@ -26,7 +26,7 @@ def are_two_tensors_similar(t1, t2, *, threshold, parallelized=False):
         mean_t1 =all_reduce_sync(mean_t1, "avg")
     diff = mean_diff / mean_t1
     return diff.item() < threshold
-def Taylor_predicterror_Forward(
+def Taylor_predicterrorstop_Forward(
         self,
         hidden_states: paddle.Tensor,
         encoder_hidden_states: paddle.Tensor = None,
@@ -130,12 +130,12 @@ def Taylor_predicterror_Forward(
                 self.prev_first_hidden_states_residual = None
                 self.predict_hidden_states=None
                 self.predict_loss=None
-                self.pre_compute_hidden = None
                 
             else:
                 if self.predict_hidden_states is  None  or (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0):
                     can_use_cache = False
                 else:
+                    
                     self.predict_loss = (self.predict_hidden_states - self.pre_compute_hidden).abs().mean()/self.predict_hidden_states.abs().mean()
                     can_use_cache = self.predict_loss < self.threshold
                 # if self.predict_hidden_states is not None or not (self.predict_hidden_states.numel() == 1 and float(self.predict_hidden_states) == 0.0) :
@@ -169,7 +169,9 @@ def Taylor_predicterror_Forward(
                 self.predict_hidden_states = hidden_states.clone()
 
             else:
+                # 预测当前步
                 self.predict_hidden_states = paddle.to_tensor(step_taylor_formula(cache_dic=cache_dic, current=current))
+                # self.predict_hidden_states = paddle.to_tensor(0)
                 # ori_hidden_states = hidden_states.clone()
                 current['activated_steps'].append(current['step'])
                 for index_block, block in enumerate(self.transformer_blocks):
@@ -262,6 +264,10 @@ def Taylor_predicterror_Forward(
                         )
 
                 hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+                if current['activated_steps'][-1] - current['activated_steps'][-2] != 1:
+                    self.predict_hidden_states = None
+                    cache_dic['cache']['hidden'] = {}
+
                 step_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
                 self.pre_compute_hidden = hidden_states.clone()
                 # self.previous_residual = hidden_states - ori_hidden_states
