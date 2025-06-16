@@ -1,0 +1,1 @@
+predicterror_taylorseer0.42_coco1k: Total 8627.93s, Avg 8.63s/image

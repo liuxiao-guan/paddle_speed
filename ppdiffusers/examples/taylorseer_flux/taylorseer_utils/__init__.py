@@ -15,7 +15,7 @@ def firstblock_derivative_approximation(cache_dic: Dict, current: Dict, feature:
     updated_taylor_factors = {}
     updated_taylor_factors[0] = feature
 
-    for i in range(cache_dic['max_order']):
+    for i in range(cache_dic['firstblock_max_order']):
         if (cache_dic['cache']['firstblock_hidden'].get(i, None) is not None) and (current['step'] > cache_dic['first_enhance'] - 2):
             updated_taylor_factors[i + 1] = (updated_taylor_factors[i] - cache_dic['cache']['firstblock_hidden'][i]) / difference_distance
         else:

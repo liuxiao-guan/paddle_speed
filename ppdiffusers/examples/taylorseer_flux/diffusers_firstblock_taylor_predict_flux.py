@@ -19,7 +19,7 @@ num_inference_steps = 50
 seed = 42
 
 prompt = "An image of a squirrel in Picasso style"
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
 #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
 
 # TaylorSeer settings
@@ -40,7 +40,7 @@ pipe.transformer.num_steps = 50
     
 
 pipe.transformer.residual_diff_threshold = (
-    0.14 #0.05  7.6s 
+    0.07 #0.05  7.6s 
 )
 pipe.transformer.downsample_factor=(1)
 pipe.transformer.accumulated_rel_l1_distance = 0

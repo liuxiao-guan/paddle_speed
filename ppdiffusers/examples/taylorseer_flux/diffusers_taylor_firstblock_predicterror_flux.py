@@ -35,7 +35,7 @@ pipe.transformer.previous_residual = None
 pipe.transformer.pre_compute_hidden =None
 pipe.transformer.predict_loss  = None
 pipe.transformer.predict_hidden_states= None
-pipe.transformer.threshold= 0.0185
+pipe.transformer.threshold= 0.08
 
 parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
 
@@ -45,21 +45,20 @@ start = paddle.device.cuda.Event(enable_timing=True)
 end = paddle.device.cuda.Event(enable_timing=True)
 
 for i in range(2):
-    start.record()
+    start_time =time.time()
     img = pipe(
         prompt, 
         num_inference_steps=num_inference_steps,
         generator=paddle.Generator().manual_seed(seed)
         ).images[0]
 
-    end.record()
-    paddle.device.synchronize()
-    elapsed_time = start.elapsed_time(end) * 1e-3
+    elapsed1 = time.time() - start_time
+    print(f"第一次运行时间: {elapsed1:.2f}s")
     peak_memory = paddle.device.cuda.max_memory_allocated()
 
-    img.save("{}.png".format('1_' + "An image of a squirrel in Picasso style"))
+    img.save("firstblockpredict.png")
     #img.save(f"{pkl_list[i]}.png")
 
     print(
-        f"epoch time: {elapsed_time:.2f} sec, parameter memory: {parameter_peak_memory/1e9:.2f} GB, memory: {peak_memory/1e9:.2f} GB"
+        f"epoch time: {elapsed1:.2f} sec, parameter memory: {parameter_peak_memory/1e9:.2f} GB, memory: {peak_memory/1e9:.2f} GB"
     )

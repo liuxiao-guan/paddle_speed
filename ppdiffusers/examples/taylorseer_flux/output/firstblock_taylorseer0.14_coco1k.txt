@@ -1,0 +1,1 @@
+firstblock_taylorseer0.14_coco1k: Total 7202.75s, Avg 7.20s/image

@@ -125,11 +125,8 @@ def Taylor_firstblock_predicterror_Forward(
         cache_dic = joint_attention_kwargs['cache_dic']
         current = joint_attention_kwargs['current']
         if self.enable_teacache:
-
-            inp = hidden_states.clone()
-            temb_ = temb.clone()
             pre_firstblock_hidden_states = firstblock_taylor_formula(cache_dic=cache_dic, current=current)
-            current['block_activated_steps'].append(current['step'])
+            
             encoder_hidden_states, hidden_states= self.transformer_blocks[0](
                 hidden_states=hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
@@ -138,12 +135,14 @@ def Taylor_firstblock_predicterror_Forward(
                # joint_attention_kwargs=joint_attention_kwargs,
             )
             # 注意一定要先预测，才去更新当前步taylor得cache 
-            if self.cnt > 2:
+            if self.cnt > 4:
                 self.predict_loss = (pre_firstblock_hidden_states - hidden_states).abs().mean()/hidden_states.abs().mean()
                 can_use_cache = self.predict_loss < self.threshold
-            # 要用block得输入来预测
-            
-            firstblock_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
+                if can_use_cache == False:
+                    # 要用block得输入来预测
+                    current['block_activated_steps'].append(current['step'])
+                    
+                    firstblock_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
             
 
             if self.cnt == 0 or self.cnt == self.num_steps - 1:
@@ -156,8 +155,8 @@ def Taylor_firstblock_predicterror_Forward(
             else:
                 if self.predict_loss is None:
                     can_use_cache = False
-                else:
-                    can_use_cache = self.predict_loss < self.threshold
+                # else:
+                #     can_use_cache = self.predict_loss < self.threshold
                 should_calc = not can_use_cache
             
             self.cnt += 1

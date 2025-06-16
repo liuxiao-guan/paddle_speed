@@ -1,0 +1,1 @@
+blockdance_R950_B30-15_N8_coco1k: Total 11139.35s, Avg 11.14s/image

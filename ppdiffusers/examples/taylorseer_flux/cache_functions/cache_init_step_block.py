@@ -59,7 +59,8 @@ def cache_init_step_block(self: FluxTransformer2DModel):
         cache_dic['force_fresh'] = 'global' 
         cache_dic['soft_fresh_weight'] = 0.0
         cache_dic['taylor_cache'] = True
-        cache_dic['max_order'] = 2
+        cache_dic['max_order'] = 1
+        cache_dic['firstblock_max_order'] = 1
         cache_dic['first_enhance'] = 3
 
     elif mode == 'Delta':
