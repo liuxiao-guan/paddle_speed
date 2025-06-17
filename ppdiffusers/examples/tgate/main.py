@@ -86,7 +86,7 @@ if __name__ == '__main__':
     args = parse_args()
     os.makedirs(args.saved_path, exist_ok=True)
     if args.prompt:
-        saved_path = os.path.join(args.saved_path, 'old_bfloat16.png')
+        saved_path = os.path.join(args.saved_path, 'test.png')
     elif args.image:
         saved_path = os.path.join(args.saved_path, 'test.mp4')
 

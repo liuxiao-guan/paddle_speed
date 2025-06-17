@@ -1,0 +1,1 @@
+taylorseer_step_coco1k: Total 12409.05s, Avg 12.41s/image

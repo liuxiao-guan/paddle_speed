@@ -77,6 +77,6 @@ def cache_init_step(self: FluxTransformer2DModel):
     current = {}
     current['activated_steps'] = [0]
     current['step'] = 0
-    current['num_steps'] = self.num_steps
+    current['num_steps'] = 50
 
     return cache_dic, current

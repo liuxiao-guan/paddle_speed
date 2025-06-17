@@ -9,14 +9,16 @@ CUDA_VISIBLE_DEVICES=1 nohup python generation.py \
 --tgate > output_tgate_50steps.log 2>&1 &
 
 
-CUDA_VISIBLE_DEVICES=2 nohup python generation.py \
+CUDA_VISIBLE_DEVICES=2 python generation.py \
 --gate_step 25 \
 --sp_interval 5 \
 --fi_interval 1 \
 --warm_up 2 \
 --inference_step 50 \
 --seed 124 \
---origin > output_50steps.log 2>&1 &
+--dataset 'coco1k' \
+--anno_path /root/paddlejob/workspace/env_run/test_data/coco1k \
+--tgate
 
 ### coco1k
 

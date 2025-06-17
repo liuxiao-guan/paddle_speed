@@ -6,14 +6,14 @@ from numpy import imag
 import paddle
 from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
 from tqdm import tqdm
-
+import time 
 from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
 from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
 from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
-from ppdiffusers.models import FluxTeaCacheTransformer2DModel
-from teacache_forward import TeaCacheForward
+# from ppdiffusers.models import FluxTeaCacheTransformer2DModel
+# from teacache_forward import TeaCacheForward
 
 # from ..taylorseer_flux.forwards.double_transformer_forward import taylorseer_flux_double_block_forward
 # from ..taylorseer_flux.forwards.single_transformer_forward import taylorseer_flux_single_block_forward
@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument(
         "--saved_path",
         type=str,
-        default='/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed',
+        default='/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16',
         help="the path to save images",
     )
     parser.add_argument(
@@ -169,17 +169,25 @@ if __name__ == '__main__':
     #加入tgate 方法的
     if args.tgate == True :
         pipe = FluxPipeline.from_pretrained(
-                "black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+                "black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         pipe = TgateFLUXLoader(pipe)
-        saved_path = os.path.join(args.saved_path,"tgate_50steps")
+        #saved_path = os.path.join(args.saved_path,"tgate_50steps")
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"tgate_50steps")
+        else:
+            saved_path = os.path.join(args.saved_path,"tgate_50steps_coco1k")
         os.makedirs(saved_path, exist_ok=True)
+        total_time =0 
         for i, prompt in enumerate(tqdm(all_prompts)):
             # if i == 3:
             #     break
+            start_time = time.time()
             image = pipe.tgate(
                 prompt=prompt,
                 height=1024,
                 width=1024,
+                guidance_scale=3.5,
+                max_sequence_length=512,
                 gate_step=args.gate_step,
                 sp_interval=args.sp_interval ,
                 fi_interval=args.fi_interval,
@@ -187,7 +195,23 @@ if __name__ == '__main__':
                 num_inference_steps=args.inference_step,
                 generator=generator,
             ).images[0]
+            end = time.time()
+            total_time += end - start_time
             image.save(os.path.join(saved_path, f"{i}.png"))
+        
+        avg_time = total_time / len(all_prompts)
+        # 获取最后一段作为文件名
+        file_name = os.path.basename(saved_path)  # -> 'firstblock_taylorseer0.07_300'
+        # 构造要写入的字符串
+        content = f"{file_name}: Total {total_time:.2f}s, Avg {avg_time:.2f}s/image"
+        # 写入到 file_name.txt
+        txt_path = f"./output/{file_name}.txt"
+        with open(txt_path, "w") as f:
+            f.write(content)
+
+        # 也可以 print 看看
+        print(f"已写入: {txt_path}")
+        print(f"tgate: Total {total_time:.2f}s, Avg {avg_time:.2f}s/image")
     # 加入teacache 方法的
     if args.teacache == True :
 

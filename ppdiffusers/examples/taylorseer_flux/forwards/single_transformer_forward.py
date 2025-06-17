@@ -31,7 +31,7 @@ def taylorseer_flux_single_block_forward(
             #**joint_attention_kwargs,
         )
 
-        hidden_states = paddle.cat([attn_output, mlp_hidden_states], dim=2)
+        hidden_states = paddle.concat([attn_output, mlp_hidden_states], axis=2)
 
         hidden_states = self.proj_out(hidden_states)
         derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)

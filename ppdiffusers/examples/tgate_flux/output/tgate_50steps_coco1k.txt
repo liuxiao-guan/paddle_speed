@@ -1,0 +1,1 @@
+tgate_50steps_coco1k: Total 19443.61s, Avg 19.44s/image

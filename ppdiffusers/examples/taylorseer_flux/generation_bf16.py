@@ -15,7 +15,9 @@ from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 # from ppdiffusers.models import FluxTeaCacheTransformer2DModel
 from teacache_forward import TeaCacheForward
-from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward,Taylor_predicterror_Forward,BlockDanceForward,Taylor_predicterror_base_Forward,Taylor_firstblock_predicterror_Forward
+from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward,Taylor_predicterror_Forward, \
+BlockDanceForward,Taylor_predicterror_base_Forward,Taylor_firstblock_predicterror_Forward,taylorseer_flux_forward, \
+    taylorseer_flux_double_block_forward, taylorseer_flux_single_block_forward,taylorseer_step_flux_forward
 
 import sys
 sys.stdout.isatty = lambda: False
@@ -150,6 +152,18 @@ def parse_args():
         default=False, 
         help='do add predicterror taylorseer block base',
     )
+    parser.add_argument(
+        '--taylorseer', 
+        action='store_true', 
+        default=False, 
+        help='do add taylorseer ',
+    )
+    parser.add_argument(
+        '--taylorseer_step', 
+        action='store_true', 
+        default=False, 
+        help='do add taylorseer step ',
+    )
     
 
     parser.add_argument(
@@ -268,6 +282,26 @@ if __name__ == '__main__':
             saved_path = os.path.join(args.saved_path,"blockdance_300")
         else:
             saved_path = os.path.join(args.saved_path,"blockdance_R950_B30-15_N8_coco1k")
+    if args.taylorseer == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+        #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
+
+        # TaylorSeer settings
+        pipe.transformer.__class__.num_steps = args.inference_step
+
+        pipe.transformer.__class__.forward = taylorseer_flux_forward
+
+        for double_transformer_block in pipe.transformer.transformer_blocks:
+            double_transformer_block.__class__.forward = taylorseer_flux_double_block_forward
+            
+        for single_transformer_block in pipe.transformer.single_transformer_blocks:
+            single_transformer_block.__class__.forward = taylorseer_flux_single_block_forward
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"taylorseer")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"taylorseer_300")
+        else:
+            saved_path = os.path.join(args.saved_path,"taylorseer_coco1k")
     # 加入teacache 方法的
     if args.teacache == True :
 
@@ -401,15 +435,27 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.08
+        pipe.transformer.threshold= 0.13
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.08_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.13_coco1k")
+    if args.taylorseer_step == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+        #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
 
-            
+        # TaylorSeer settings
+        pipe.transformer.__class__.num_steps = args.inference_step
+
+        pipe.transformer.__class__.forward = taylorseer_step_flux_forward
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"taylorseer_step")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"taylorseer_step_300")
+        else:
+            saved_path = os.path.join(args.saved_path,"taylorseer_step_coco1k")
     os.makedirs(saved_path, exist_ok=True)
     total_time = 0
     for i, prompt in enumerate(tqdm(all_prompts)):

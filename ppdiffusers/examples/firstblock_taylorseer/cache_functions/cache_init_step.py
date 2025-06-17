@@ -1,5 +1,5 @@
 from diffusers.models import FluxTransformer2DModel
-def cache_init_step_block(self: FluxTransformer2DModel):   
+def cache_init_step(self: FluxTransformer2DModel):   
     '''
     Initialization for cache.
     '''
@@ -8,7 +8,6 @@ def cache_init_step_block(self: FluxTransformer2DModel):
     cache_index = {}
     cache[-1]={}
     cache['hidden'] = {}
-    cache['firstblock_hidden']= {}
     cache_index[-1]={}
     cache_index['layer_index']={}
     # cache_dic['attn_map'] = {}
@@ -59,8 +58,7 @@ def cache_init_step_block(self: FluxTransformer2DModel):
         cache_dic['force_fresh'] = 'global' 
         cache_dic['soft_fresh_weight'] = 0.0
         cache_dic['taylor_cache'] = True
-        cache_dic['max_order'] = 2
-        cache_dic['firstblock_max_order'] = 1
+        cache_dic['max_order'] = 1
         cache_dic['first_enhance'] = 3
 
     elif mode == 'Delta':
@@ -77,7 +75,6 @@ def cache_init_step_block(self: FluxTransformer2DModel):
         cache_dic['first_enhance'] = 1
 
     current = {}
-    current['block_activated_steps'] = [0]
     current['activated_steps'] = [0]
     current['step'] = 0
     current['num_steps'] = self.num_steps

@@ -26,11 +26,12 @@ from xfuser.core.distributed.parallel_state import (
     is_pipeline_last_stage,
 )
 
-from cache_functions import cache_init, cal_type
+from cache_functions import cache_init_step, cal_type
+from taylorseer_utils import step_taylor_formula,step_derivative_approximation
 
 logger = logging.get_logger(__name__)
 
-def taylorseer_flux_forward(
+def taylorseer_step_flux_forward(
     self: FluxTransformer2DModel,
     hidden_states: paddle.Tensor,
     encoder_hidden_states: paddle.Tensor = None,
@@ -73,7 +74,7 @@ def taylorseer_flux_forward(
     if joint_attention_kwargs is None:
         joint_attention_kwargs = {}
     if joint_attention_kwargs.get("cache_dic", None) is None:
-        joint_attention_kwargs['cache_dic'], joint_attention_kwargs['current'] = cache_init(self)
+        joint_attention_kwargs['cache_dic'], joint_attention_kwargs['current'] = cache_init_step(self)
 
     cal_type(joint_attention_kwargs['cache_dic'], joint_attention_kwargs['current'])
 
@@ -128,98 +129,97 @@ def taylorseer_flux_forward(
         ip_hidden_states = self.encoder_hid_proj(ip_adapter_image_embeds)
         joint_attention_kwargs.update({"ip_hidden_states": ip_hidden_states})
 
-    joint_attention_kwargs['current']['stream'] = 'double_stream'
+   
+    cache_dic = joint_attention_kwargs['cache_dic']
+    current = joint_attention_kwargs['current']
+    if current['type'] == 'Taylor':
+        hidden_states = step_taylor_formula(cache_dic=cache_dic, current=current)
+    else:
+        #current['activated_steps'].append(current['step'])
+        for index_block, block in enumerate(self.transformer_blocks):
+            if paddle.is_grad_enabled() and self.gradient_checkpointing:
 
-    for index_block, block in enumerate(self.transformer_blocks):
-
-        joint_attention_kwargs['current']['layer'] = index_block
-
-        if paddle.is_grad_enabled() and self.gradient_checkpointing:
-
-            def create_custom_forward(module, return_dict=None):
-                def custom_forward(*inputs):
-                    if return_dict is not None:
-                        return module(*inputs, return_dict=return_dict)
-                    else:
-                        return module(*inputs)
-                    
-                return custom_forward
-            
-            ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_paddle_version(">=", "1.11.0") else {}
-            encoder_hidden_states, hidden_states = paddle.utils.checkpoint.checkpoint(
-                create_custom_forward(block),
-                hidden_states,
-                encoder_hidden_states,
-                temb,
-                image_rotary_emb,
-                **ckpt_kwargs,
-            )
-
-        else:
-            encoder_hidden_states, hidden_states = block(
-                hidden_states=hidden_states,
-                encoder_hidden_states=encoder_hidden_states,
-                temb=temb,
-                image_rotary_emb=image_rotary_emb,
-                joint_attention_kwargs=joint_attention_kwargs,
-            )
-            
-        # controlnet residual
-        if controlnet_block_samples is not None:
-            interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
-            interval_control = int(np.ceil(interval_control))
-            # For Xlabs ControlNet.
-            if controlnet_blocks_repeat:
-                hidden_states = (
-                    hidden_states + controlnet_block_samples[index_block % len(controlnet_block_samples)]
+                def create_custom_forward(module, return_dict=None):
+                    def custom_forward(*inputs):
+                        if return_dict is not None:
+                            return module(*inputs, return_dict=return_dict)
+                        else:
+                            return module(*inputs)
+                        
+                    return custom_forward
+                
+                ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_paddle_version(">=", "1.11.0") else {}
+                encoder_hidden_states, hidden_states = paddle.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states,
+                    encoder_hidden_states,
+                    temb,
+                    image_rotary_emb,
+                    **ckpt_kwargs,
                 )
+
             else:
-                hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
-    hidden_states = paddle.concat([encoder_hidden_states, hidden_states], axis=1)
+                encoder_hidden_states, hidden_states = block(
+                    hidden_states=hidden_states,
+                    encoder_hidden_states=encoder_hidden_states,
+                    temb=temb,
+                    image_rotary_emb=image_rotary_emb,
+                    # joint_attention_kwargs=joint_attention_kwargs,
+                )
+                
+            # controlnet residual
+            if controlnet_block_samples is not None:
+                interval_control = len(self.transformer_blocks) / len(controlnet_block_samples)
+                interval_control = int(np.ceil(interval_control))
+                # For Xlabs ControlNet.
+                if controlnet_blocks_repeat:
+                    hidden_states = (
+                        hidden_states + controlnet_block_samples[index_block % len(controlnet_block_samples)]
+                    )
+                else:
+                    hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
+        hidden_states = paddle.concat([encoder_hidden_states, hidden_states], axis=1)
     
-    joint_attention_kwargs['current']['stream'] = 'single_stream'
+    
+        for index_block, block in enumerate(self.single_transformer_blocks):
 
-    for index_block, block in enumerate(self.single_transformer_blocks):
+            if paddle.is_grad_enabled() and self.gradient_checkpointing:
+                def create_custom_forward(module, return_dict=None):
+                    def custom_forward(*inputs):
+                        if return_dict is not None:
+                            return module(*inputs, return_dict=return_dict)
+                        else:
+                            return module(*inputs)
+                        
+                    return custom_forward
+                ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_paddle_version(">=", "1.11.0") else {}
+                hidden_states = paddle.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states,
+                    temb,
+                    image_rotary_emb,
+                    **ckpt_kwargs,
+                )
 
-        joint_attention_kwargs['current']['layer'] = index_block
+            else:
+                hidden_states = block(
+                    hidden_states=hidden_states,
+                    temb=temb,
+                    image_rotary_emb=image_rotary_emb,
+                    # joint_attention_kwargs=joint_attention_kwargs,
+                )
 
-        if paddle.is_grad_enabled() and self.gradient_checkpointing:
+            # controlnet residual
+            if controlnet_single_block_samples is not None:
+                interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
+                interval_control = int(np.ceil(interval_control))
+                hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
+                    hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+                    + controlnet_single_block_samples[index_block // interval_control]
+                )
 
-            def create_custom_forward(module, return_dict=None):
-                def custom_forward(*inputs):
-                    if return_dict is not None:
-                        return module(*inputs, return_dict=return_dict)
-                    else:
-                        return module(*inputs)
-                    
-                return custom_forward
-            ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_paddle_version(">=", "1.11.0") else {}
-            hidden_states = paddle.utils.checkpoint.checkpoint(
-                create_custom_forward(block),
-                hidden_states,
-                temb,
-                image_rotary_emb,
-                **ckpt_kwargs,
-            )
-
-        else:
-            hidden_states = block(
-                hidden_states=hidden_states,
-                temb=temb,
-                image_rotary_emb=image_rotary_emb,
-                joint_attention_kwargs=joint_attention_kwargs,
-            )
-
-        # controlnet residual
-        if controlnet_single_block_samples is not None:
-            interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
-            interval_control = int(np.ceil(interval_control))
-            hidden_states[:, encoder_hidden_states.shape[1] :, ...] = (
-                hidden_states[:, encoder_hidden_states.shape[1] :, ...]
-                + controlnet_single_block_samples[index_block // interval_control]
-            )
-
-    hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+        hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
+        step_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
 
     hidden_states = self.norm_out(hidden_states, temb)
     output = self.proj_out(hidden_states)

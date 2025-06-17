@@ -10,3 +10,4 @@ from .BlockDance_forward import BlockDanceForward
 from .flux_taylor_predicterrorstop_forward import Taylor_predicterrorstop_Forward
 from .flux_taylor_predicterror_base_forward import Taylor_predicterror_base_Forward
 from .flux_taylor_firstblock_predicterror_forward import Taylor_firstblock_predicterror_Forward
+from .flux_taylorseer_step_flux_forward import  taylorseer_step_flux_forward

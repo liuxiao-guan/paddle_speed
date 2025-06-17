@@ -54,7 +54,7 @@ CUDA_VISIBLE_DEVICES=3  nohup python evaluation.py \
 
 
 
-CUDA_VISIBLE_DEVICES=1 python evaluation.py \
+CUDA_VISIBLE_DEVICES=2 python evaluation.py \
 --inference_step 50 \
 --seed 124 \
 --training_path /root/paddlejob/workspace/env_run/test_data/coco1k/1k \

@@ -145,18 +145,19 @@ if __name__ == '__main__':
         pipe = FluxPipeline.from_pretrained(
                 "black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
         pipe = TgateFLUXLoader(pipe)
-        image = pipe.tgate(
-            prompt=args.prompt,
-            height=1024,
-            width=1024,
-            gate_step=args.gate_step,
-            sp_interval=args.sp_interval ,
-            fi_interval=args.fi_interval,
-            warm_up=args.warm_up,
-            num_inference_steps=args.inference_step,
-            generator=generator,
-        ).images[0]
-        image.save(saved_path)
+        for i in range(2):
+            image = pipe.tgate(
+                prompt=args.prompt,
+                height=1024,
+                width=1024,
+                gate_step=args.gate_step,
+                sp_interval=args.sp_interval ,
+                fi_interval=args.fi_interval,
+                warm_up=args.warm_up,
+                num_inference_steps=args.inference_step,
+                generator=generator,
+            ).images[0]
+            image.save(saved_path)
 
     elif args.model == 'pixart_alpha':
         pipe = PixArtAlphaPipeline.from_pretrained(
