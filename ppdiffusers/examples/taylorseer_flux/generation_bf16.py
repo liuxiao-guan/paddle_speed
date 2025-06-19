@@ -435,13 +435,13 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.13
+        pipe.transformer.threshold= 0.03
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.13_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.03_coco1k")
     if args.taylorseer_step == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
