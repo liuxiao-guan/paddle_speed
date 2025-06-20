@@ -17,7 +17,7 @@ import paddle
 from paddlenlp.transformers import LlamaModel
 from paddlenlp.transformers.llama.tokenizer_fast import LlamaTokenizerFast
 from ppdiffusers import HunyuanVideoPipeline, HunyuanVideoTransformer3DModel
-from ppdiffusers.utils import export_to_video
+from ppdiffusers.utils import export_to_video,export_to_video_2
 import time
 
 os.environ["SKIP_PARENT_CLASS_CHECK"] = "True"
@@ -39,12 +39,12 @@ for i in range(2):
     start = time.time()
     output = pipe(
         prompt=prompt,
-        height=320,
-        width=512,
-        num_frames=61,
-        num_inference_steps=30,
+        height=480,
+        width=640,
+        num_frames=65,
+        num_inference_steps=50,
         generator=paddle.Generator().manual_seed(42),
     ).frames[0]
     elapsed1 = time.time() - start
     print(f"第一次运行时间: {elapsed1:.2f}s")
-    export_to_video(output, "./text_to_video_generation-hunyuan_video.mp4", fps=15)
+    export_to_video_2(output, "./text_to_video_generation-hunyuan_video.mp4", fps=15)
