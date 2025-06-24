@@ -47,4 +47,4 @@ for i in range(2):
     ).frames[0]
     elapsed1 = time.time() - start
     print(f"第一次运行时间: {elapsed1:.2f}s")
-    export_to_video_2(output, "./text_to_video_generation-hunyuan_video.mp4", fps=15)
+    export_to_video_2(output, "./text_to_video_generation-hunyuan_video.mp4", fps=24)

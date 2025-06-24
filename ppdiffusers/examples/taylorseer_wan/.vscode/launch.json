@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: python taylorseer_firstpredict_step_text2video.py",
+            "type": "python",
+            "request": "launch",
+            "program": "taylorseer_firstpredict_step_text2video.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
+        }
+    ]
+}

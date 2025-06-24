@@ -1,0 +1,1 @@
+taylorseer: Total 92336.86s, Avg 97.61s/image

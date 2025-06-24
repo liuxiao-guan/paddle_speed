@@ -9,8 +9,10 @@ from ppdiffusers.utils import scale_lora_layers,unscale_lora_layers
 from ppdiffusers.models.modeling_outputs import Transformer2DModelOutput
 from cache_functions import cal_type
 from ppdiffusers import WanTransformer3DModel
+from taylorseer_utils import step_uncond_derivative_approximation,step_cond_derivative_approximation,taylor_formula
 
-def wan_forward(
+
+def wan_step_forward(
         self:WanTransformer3DModel,
         hidden_states: paddle.Tensor,
         timestep: paddle.Tensor,
@@ -58,17 +60,31 @@ def wan_forward(
             encoder_hidden_states = paddle.concat([encoder_hidden_states_image, encoder_hidden_states], axis=1)
 
         # 4. Transformer blocks
-        if paddle.is_grad_enabled() and self.gradient_checkpointing:
-            for block in self.blocks:
-                hidden_states = self._gradient_checkpointing_func(
-                    block, hidden_states, encoder_hidden_states, timestep_proj, rotary_emb
-                )
-        else:
-            for i ,block in enumerate(self.blocks):
-                current['layer'] = i
-                hidden_states = block(hidden_states, encoder_hidden_states, timestep_proj, rotary_emb,current,cache_dic)
-                #hidden_states = block(hidden_states, encoder_hidden_states, timestep_proj, rotary_emb)
+        if current['type'] == "full":
+            if paddle.is_grad_enabled() and self.gradient_checkpointing:
+                for block in self.blocks:
+                    hidden_states = self._gradient_checkpointing_func(
+                        block, hidden_states, encoder_hidden_states, timestep_proj, rotary_emb
+                    )
+            else:
+                for i ,block in enumerate(self.blocks):
+                    # current['layer'] = i
+                    #hidden_states = block(hidden_states, encoder_hidden_states, timestep_proj, rotary_emb,current,cache_dic)
+                    hidden_states = block(hidden_states, encoder_hidden_states, timestep_proj, rotary_emb)
+            
+            if current['stream'] == "cond_stream":   
+                step_cond_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
+            else:
+                step_uncond_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
 
+        else:
+            distance= current['step'] - current['activated_steps'][-1]
+            if current['stream'] == "cond_stream":   
+                hidden_states=taylor_formula(derivative_dict=cache_dic['cache']['cond_hidden'],distance=distance)
+            else:
+                hidden_states =taylor_formula(derivative_dict=cache_dic['cache']['uncond_hidden'],distance=distance)
+            #hidden_states = step_taylor_formula(cache_dic=cache_dic, current=current)
+        
         # 5. Output norm, projection & unpatchify
         shift, scale = (self.scale_shift_table + temb.unsqueeze(1)).chunk(2, axis=1)
         hidden_states = (self.norm_out(hidden_states.cast(paddle.float32)) * (1 + scale) + shift).cast(

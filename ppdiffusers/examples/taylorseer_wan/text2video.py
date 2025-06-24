@@ -17,6 +17,7 @@ import paddle
 from ppdiffusers import AutoencoderKLWan, WanPipeline
 from ppdiffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 from ppdiffusers.utils import export_to_video_2
+import time
 
 # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
 model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
@@ -31,14 +32,17 @@ pipe.scheduler = scheduler
 
 prompt = "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window."
 negative_prompt = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
-
-output = pipe(
-    prompt=prompt,
-    negative_prompt=negative_prompt,
-    height=480,
-    width=832,
-    num_frames=81,
-    guidance_scale=5.0,
-).frames[0]
-
-export_to_video_2(output, "output.mp4", fps=16)
+for i in range(2):
+    start = time.time()
+    output = pipe(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        height=480,
+        width=832,
+        num_frames=81,
+        guidance_scale=5.0,
+        generator=paddle.Generator().manual_seed(42),
+    ).frames[0]
+    elapsed1 = time.time() - start
+    print(f"第一次运行时间: {elapsed1:.2f}s")
+    export_to_video_2(output, "output.mp4", fps=16)

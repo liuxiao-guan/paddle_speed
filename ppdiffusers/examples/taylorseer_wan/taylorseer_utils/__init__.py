@@ -2,6 +2,85 @@ from typing import Dict
 import paddle
 import math
 
+
+def firstblock_derivative_approximation(cache_dic: Dict, current: Dict, feature: paddle.Tensor):
+    """
+    Compute derivative approximation.
+    
+    :param cache_dic: Cache dictionary
+    :param current: Information of the current step
+    """
+    difference_distance = current['block_activated_steps'][-1] - current['block_activated_steps'][-2]
+    #difference_distance = current['activated_times'][-1] - current['activated_times'][-2]
+    updated_taylor_factors = {}
+    updated_taylor_factors[0] = feature
+
+    for i in range(cache_dic['firstblock_max_order']):
+        if (cache_dic['cache']['firstblock_hidden'].get(i, None) is not None) and (current['step'] > cache_dic['first_enhance'] - 2):
+            updated_taylor_factors[i + 1] = (updated_taylor_factors[i] - cache_dic['cache']['firstblock_hidden'][i]) / difference_distance
+        else:
+            break
+    
+    cache_dic['cache']['firstblock_hidden'] = updated_taylor_factors
+
+def firstblock_taylor_formula(cache_dic: Dict, current: Dict) -> paddle.Tensor: 
+    """
+    Compute Taylor expansion error.
+    
+    :param cache_dic: Cache dictionary
+    :param current: Information of the current step
+    """
+    x = current['step'] - current['block_activated_steps'][-1]
+    #x = current['t'] - current['activated_times'][-1]
+    output = 0
+    # if len(cache_dic['cache']['firstblock_hidden']) == 1:
+    #     return output
+    for i in range(len(cache_dic['cache']['firstblock_hidden'])):
+        
+        output += (1 / math.factorial(i)) * cache_dic['cache']['firstblock_hidden'][i] * (x ** i)
+    
+    return output
+
+def step_uncond_derivative_approximation(cache_dic: Dict, current: Dict, feature: paddle.Tensor):
+    """
+    Compute derivative approximation.
+    
+    :param cache_dic: Cache dictionary
+    :param current: Information of the current step
+    """
+    difference_distance = current['activated_steps'][-1] - current['activated_steps'][-2]
+    #difference_distance = current['activated_times'][-1] - current['activated_times'][-2]
+
+    updated_taylor_factors = {}
+    updated_taylor_factors[0] = feature
+
+    for i in range(cache_dic['max_order']):
+        if (cache_dic['cache']['uncond_hidden'].get(i, None) is not None) and (current['step'] > cache_dic['first_enhance'] - 2):
+            updated_taylor_factors[i + 1] = (updated_taylor_factors[i] - cache_dic['cache']['uncond_hidden'][i]) / difference_distance
+        else:
+            break
+    
+    cache_dic['cache']['uncond_hidden'] = updated_taylor_factors
+def step_cond_derivative_approximation(cache_dic: Dict, current: Dict, feature: paddle.Tensor):
+    """
+    Compute derivative approximation.
+    
+    :param cache_dic: Cache dictionary
+    :param current: Information of the current step
+    """
+    difference_distance = current['activated_steps'][-1] - current['activated_steps'][-2]
+    #difference_distance = current['activated_times'][-1] - current['activated_times'][-2]
+
+    updated_taylor_factors = {}
+    updated_taylor_factors[0] = feature
+
+    for i in range(cache_dic['max_order']):
+        if (cache_dic['cache']['cond_hidden'].get(i, None) is not None) and (current['step'] > cache_dic['first_enhance'] - 2):
+            updated_taylor_factors[i + 1] = (updated_taylor_factors[i] - cache_dic['cache']['cond_hidden'][i]) / difference_distance
+        else:
+            break
+    
+    cache_dic['cache']['cond_hidden'] = updated_taylor_factors
 def derivative_approximation(cache_dic: Dict, current: Dict, feature: paddle.Tensor):
     """
     Compute derivative approximation.

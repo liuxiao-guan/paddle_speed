@@ -1,0 +1,1 @@
+DrawBench_teacache0.25: Total 2688.96s, Avg 13.44s/image

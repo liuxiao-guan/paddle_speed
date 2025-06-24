@@ -17,7 +17,7 @@ import paddle
 from ppdiffusers import AutoencoderKLWan, WanPipeline
 from ppdiffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 from ppdiffusers.utils import export_to_video_2
-from forwards import wan_forward,wan_block_forward,wan_pipeline
+from forwards import wan_firstpredict_step_forward,wan_step_pipeline
 import time
 
 # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
@@ -30,11 +30,17 @@ scheduler = UniPCMultistepScheduler(
     prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
 )
 pipe.scheduler = scheduler
-pipe.__class__.__call__ = wan_pipeline
-pipe.transformer.__class__.forward = wan_forward
+pipe.__class__.__call__ = wan_step_pipeline
+pipe.transformer.__class__.forward = wan_firstpredict_step_forward
+pipe.transformer.cnt = 0
+pipe.transformer.num_steps = 50
+pipe.transformer.predict_loss  = None
+pipe.transformer.threshold= 0.05
+pipe.transformer.should_calc = False
 
-for double_transformer_block in pipe.transformer.blocks:
-    double_transformer_block.__class__.forward = wan_block_forward
+
+# for double_transformer_block in pipe.transformer.blocks:
+#     double_transformer_block.__class__.forward = wan_block_forward
 prompt = "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window."
 negative_prompt = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 for i in range(2):

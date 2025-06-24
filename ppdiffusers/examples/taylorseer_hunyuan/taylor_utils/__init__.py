@@ -33,8 +33,8 @@ def firstblock_taylor_formula(cache_dic: Dict, current: Dict) -> paddle.Tensor:
     x = current['step'] - current['block_activated_steps'][-1]
     #x = current['t'] - current['activated_times'][-1]
     output = 0
-    if len(cache_dic['cache']['firstblock_hidden']) == 1:
-        return output
+    # if len(cache_dic['cache']['firstblock_hidden']) == 1:
+    #     return output
     for i in range(len(cache_dic['cache']['firstblock_hidden'])):
         
         output += (1 / math.factorial(i)) * cache_dic['cache']['firstblock_hidden'][i] * (x ** i)

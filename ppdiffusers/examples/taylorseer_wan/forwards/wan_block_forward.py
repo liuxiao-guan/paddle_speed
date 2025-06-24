@@ -58,14 +58,14 @@ def wan_block_forward(
         else:
             distance= current['step'] - current['activated_steps'][-1]
             current['module'] = 'self-attention'
-            attn_output = taylor_formula(cache_dic=cache_dic['cache'][-1][current['stream']][current['layer']][current['module']], distance=distance)
+            attn_output = taylor_formula(derivative_dict=cache_dic['cache'][-1][current['stream']][current['layer']][current['module']], distance=distance)
             hidden_states = (hidden_states.astype(paddle.float32) + attn_output * gate_msa).cast(hidden_states.dtype)
             current['module'] = 'cross-attention'
-            attn_output = taylor_formula(cache_dic=cache_dic['cache'][-1][current['stream']][current['layer']][current['module']], distance=distance)
+            attn_output = taylor_formula(derivative_dict=cache_dic['cache'][-1][current['stream']][current['layer']][current['module']], distance=distance)
             hidden_states = hidden_states + attn_output
             # 3. Feed-forward
             current['module'] = 'ffn'
-            ff_output = taylor_formula(cache_dic=cache_dic['cache'][-1][current['stream']][current['layer']][current['module']], distance=distance)
+            ff_output = taylor_formula(derivative_dict=cache_dic['cache'][-1][current['stream']][current['layer']][current['module']], distance=distance)
             hidden_states = (hidden_states.astype(paddle.float32) + ff_output.astype(paddle.float32) * c_gate_msa).cast(
                 hidden_states.dtype
             )

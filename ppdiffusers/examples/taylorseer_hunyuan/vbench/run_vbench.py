@@ -1,6 +1,6 @@
 import argparse
 
-import torch
+import paddle
 from vbench import VBench
 
 full_info_path = "./vbench/VBench_full_info.json"
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     kwargs["imaging_quality_preprocessing_mode"] = "longer"  # use VBench/evaluate.py default
 
     for dimension in dimensions:
-        my_VBench = VBench(torch.device("cuda"), full_info_path, args.save_path)
+        my_VBench = VBench("cuda", full_info_path, args.save_path)
         my_VBench.evaluate(
             videos_path=args.video_path,
             name=dimension,

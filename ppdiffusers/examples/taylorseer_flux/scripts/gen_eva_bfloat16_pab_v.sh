@@ -13,3 +13,4 @@ CUDA_VISIBLE_DEVICES=3 python evaluation.py \
 --generation_path /root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16/origin_50steps_coco1k \
 --speed_generation_path /root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16/firstblock_pre_predicterror_taylor0.13_coco1k \
 --resolution 1024 
+

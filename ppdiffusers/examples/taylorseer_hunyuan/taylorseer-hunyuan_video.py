@@ -37,7 +37,7 @@ pipe.vae.enable_tiling()
 pipe.vae.enable_slicing()
 pipe.__class__.__call__ = taylorhunyuanpipeline
 pipe.transformer.__class__.forward = taylorseer_hunyuan_forward
-pipe.enable_model_cpu_offload()
+# pipe.enable_model_cpu_offload()
 for double_transformer_block in pipe.transformer.transformer_blocks:
     double_transformer_block.__class__.forward = taylorseer_hunyuan_double_block_forward
     
@@ -52,8 +52,9 @@ for i in range(2):
         width=640,
         num_frames=65,
         num_inference_steps=50,
+        num_videos_per_prompt=1,
         generator=paddle.Generator().manual_seed(42),
     ).frames[0]
     elapsed1 = time.time() - start
     print(f"第一次运行时间: {elapsed1:.2f}s")
-    export_to_video_2(output, "./text_to_video_generation-hunyuan_video.mp4", fps=15)
+    export_to_video_2(output, "./text_to_video_generation-hunyuan_video.mp4", fps=24)
