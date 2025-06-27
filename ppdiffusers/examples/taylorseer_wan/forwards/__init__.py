@@ -7,3 +7,4 @@ from .wan_pipeline import wan_pipeline
 from .wan_step_forward import wan_step_forward
 from .wan_step_pipeline import wan_step_pipeline
 from .wan_firstpredict_step_forward import wan_firstpredict_step_forward
+from .wan_teacache_forward import wan_teacache_forward

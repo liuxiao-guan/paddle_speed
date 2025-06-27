@@ -495,7 +495,7 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.03
+        pipe.transformer.threshold= 0.10
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
@@ -503,7 +503,7 @@ if __name__ == '__main__':
         elif args.dataset =="DrawBench":
             saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.03")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_pre_predicterror_taylor0.03_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_pre_predicterror_taylor0.10_coco1k")
     os.makedirs(saved_path, exist_ok=True)
     total_time = 0
     for i, prompt in enumerate(tqdm(all_prompts)):

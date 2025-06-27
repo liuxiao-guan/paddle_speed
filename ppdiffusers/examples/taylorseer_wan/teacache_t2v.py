@@ -17,8 +17,8 @@ import paddle
 from ppdiffusers import AutoencoderKLWan, WanPipeline
 from ppdiffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 from ppdiffusers.utils import export_to_video_2
-from forwards import wan_firstpredict_step_forward,wan_step_pipeline
 import time
+from forwards import wan_teacache_forward
 
 # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
 model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
@@ -29,19 +29,25 @@ flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
 scheduler = UniPCMultistepScheduler(
     prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
 )
-
+pipe.transformer.__class__.forward = wan_teacache_forward
 pipe.scheduler = scheduler
-pipe.__class__.__call__ = wan_step_pipeline
-pipe.transformer.__class__.forward = wan_firstpredict_step_forward
+# pipe.__class__.generate = t2v_generate
+pipe.transformer.enable_teacache = True
+
 pipe.transformer.cnt = 0
-pipe.transformer.num_steps = 50
-pipe.transformer.predict_loss  = None
-pipe.transformer.threshold= 0.18
-pipe.transformer.should_calc = False
+pipe.transformer.num_steps = 50*2 # 因为有cfg
+pipe.transformer.teacache_thresh = 0.26 #0.08 0.2 
+pipe.transformer.accumulated_rel_l1_distance_even = 0
+pipe.transformer.accumulated_rel_l1_distance_odd = 0
+pipe.transformer.previous_e0_even = None
+pipe.transformer.previous_e0_odd = None
+pipe.transformer.previous_residual_even = None
+pipe.transformer.previous_residual_odd = None
+pipe.transformer.coefficients= [2.39676752e+03, -1.31110545e+03,  2.01331979e+02, -8.29855975e+00, 1.37887774e-01]
+pipe.transformer.ret_steps=1*2
+pipe.transformer.cutoff_steps=50*2 - 2
+# pipe.model.__class__.use_ref_steps = args.use_ret_steps # 默认是false 
 
-
-# for double_transformer_block in pipe.transformer.blocks:
-#     double_transformer_block.__class__.forward = wan_block_forward
 prompt = "A cat and a dog baking a cake together in a kitchen. The cat is carefully measuring flour, while the dog is stirring the batter with a wooden spoon. The kitchen is cozy, with sunlight streaming through the window."
 negative_prompt = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
 
@@ -58,8 +64,8 @@ output = pipe(
 elapsed1 = time.time() - start
 print(f"第一次运行时间: {elapsed1:.2f}s")
 export_to_video_2(output, "output0.mp4", fps=16)
- 
-pipe.transformer.threshold= 0.18
+
+pipe.transformer.teacache_thresh = 0.22 #0.08 0.2 
 start = time.time()
 output = pipe(
     prompt=prompt,
@@ -74,7 +80,8 @@ elapsed1 = time.time() - start
 print(f"第一次运行时间: {elapsed1:.2f}s")
 export_to_video_2(output, "output1.mp4", fps=16)
 
-pipe.transformer.threshold= 0.16
+
+pipe.transformer.teacache_thresh = 0.24 #0.08 0.2 
 start = time.time()
 output = pipe(
     prompt=prompt,
@@ -89,7 +96,7 @@ elapsed1 = time.time() - start
 print(f"第一次运行时间: {elapsed1:.2f}s")
 export_to_video_2(output, "output2.mp4", fps=16)
 
-pipe.transformer.threshold= 0.15
+pipe.transformer.teacache_thresh = 0.26 #0.08 0.2 
 start = time.time()
 output = pipe(
     prompt=prompt,

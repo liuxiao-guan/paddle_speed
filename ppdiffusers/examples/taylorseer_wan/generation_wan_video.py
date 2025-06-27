@@ -1,25 +1,19 @@
 import os
 import argparse
-import pickle
-from typing_extensions import Self
 from numpy import imag
 import paddle
-from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
 from tqdm import tqdm
 import time
-
-# from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
-from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
-from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline,PyramidAttentionBroadcastConfig, apply_pyramid_attention_broadcast
 from paddlenlp.transformers import LlamaModel
 from paddlenlp.transformers.llama.tokenizer_fast import LlamaTokenizerFast
 from ppdiffusers import HunyuanVideoPipeline, HunyuanVideoTransformer3DModel
-from ppdiffusers.utils import export_to_video,export_to_video_2
-from ppdiffusers import DPMSolverMultistepScheduler
-from ppdiffusers.utils import load_image, export_to_video
+from ppdiffusers.utils import export_to_video_2
 import json
-from forwards import taylorhunyuanpipeline,taylorseer_hunyuan_forward,taylorseer_hunyuan_double_block_forward,taylorseer_hunyuan_single_block_forward
-
+from ppdiffusers import AutoencoderKLWan, WanPipeline
+from ppdiffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
+from ppdiffusers.utils import export_to_video_2
+from forwards import wan_forward,wan_block_forward,wan_pipeline, wan_firstpredict_step_forward,wan_step_pipeline,wan_teacache_forward
+import time
 
 # from teacache_forward import TeaCacheForward
 
@@ -43,7 +37,7 @@ def parse_args():
     parser.add_argument(
         "--saved_path",
         type=str,
-        default='/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_hunyuan',
+        default='/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_wan',
         help="the path to save images",
     )
     parser.add_argument(
@@ -160,6 +154,12 @@ def parse_args():
         default='coco10k',
         help="the path of evaluation annotations",
     )
+    parser.add_argument(
+        '--repeat',
+        type=int,
+        default=0,
+        help='the count of repeat',
+    )
     
     args = parser.parse_args()
     return args
@@ -168,6 +168,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     os.makedirs(args.saved_path, exist_ok=True)
+    negative_prompt = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
     # 获取prompt
     if args.dataset == "vbench":
         with open("/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_hunyuan/vbench/VBench_full_info.json", 'r') as f:
@@ -188,26 +189,21 @@ if __name__ == '__main__':
     generator = None
     if args.seed is not None:
         generator = paddle.Generator().manual_seed(args.seed)
-
-    os.environ["SKIP_PARENT_CLASS_CHECK"] = "True"
-    model_id = "hunyuanvideo-community/HunyuanVideo"
-    transformer = HunyuanVideoTransformer3DModel.from_pretrained(model_id, subfolder="transformer", paddle_dtype=paddle.bfloat16)
-    tokenizer = LlamaTokenizerFast.from_pretrained(model_id, subfolder="tokenizer")
-    text_encoder = LlamaModel.from_pretrained(model_id, subfolder="text_encoder", dtype="float16")
     # 原始生成的
     if args.origin == True:
         
-        pipe = HunyuanVideoPipeline.from_pretrained(
-            model_id,
-            transformer = transformer,
-            text_encoder = text_encoder,
-            tokenizer = tokenizer,
-            paddle_dtype=paddle.float16,
-            map_location="cpu")
-        pipe.vae.enable_tiling()
-        pipe.vae.enable_slicing()
+        # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+        model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
+        pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
+
+        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        scheduler = UniPCMultistepScheduler(
+            prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
+        )
+        pipe.scheduler = scheduler
         if args.dataset == "vbench":
-            saved_path = os.path.join(args.saved_path,"origin_50steps")
+            saved_path = os.path.join(args.saved_path,"origin_fs5_50steps")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"origin_300")
         else:
@@ -241,64 +237,88 @@ if __name__ == '__main__':
         else:
             saved_path = os.path.join(args.saved_path,"blockdance_R950_B30-15_N8_coco1k")
     if args.taylorseer == True:
-        
+        # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+        model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
+        pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
+
+        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        scheduler = UniPCMultistepScheduler(
+            prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
+        )
+        pipe.scheduler = scheduler
+        pipe.__class__.__call__ = wan_pipeline
+        pipe.transformer.__class__.forward = wan_forward
+
+        for double_transformer_block in pipe.transformer.blocks:
+            double_transformer_block.__class__.forward = wan_block_forward
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"taylorseer")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"taylorseer_300")
         else:
-            saved_path = os.path.join(args.saved_path,"taylorseer")
-        os.environ["SKIP_PARENT_CLASS_CHECK"] = "True"
-        model_id = "hunyuanvideo-community/HunyuanVideo"
-        transformer = HunyuanVideoTransformer3DModel.from_pretrained(model_id, subfolder="transformer", paddle_dtype=paddle.bfloat16)
-        tokenizer = LlamaTokenizerFast.from_pretrained(model_id, subfolder="tokenizer")
-        text_encoder = LlamaModel.from_pretrained(model_id, subfolder="text_encoder", dtype="float16")
-        pipe = HunyuanVideoPipeline.from_pretrained(
-            model_id,
-            transformer = transformer,
-            text_encoder = text_encoder,
-            tokenizer = tokenizer,
-            paddle_dtype=paddle.float16,
-            map_location="cpu")
-        pipe.vae.enable_tiling()
-        pipe.vae.enable_slicing()
-        pipe.__class__.__call__ = taylorhunyuanpipeline
-        pipe.transformer.__class__.forward = taylorseer_hunyuan_forward
-        # pipe.enable_model_cpu_offload()
-        for double_transformer_block in pipe.transformer.transformer_blocks:
-            double_transformer_block.__class__.forward = taylorseer_hunyuan_double_block_forward
-            
-        for single_transformer_block in pipe.transformer.single_transformer_blocks:
-            single_transformer_block.__class__.forward = taylorseer_hunyuan_single_block_forward
+            saved_path = os.path.join(args.saved_path,"taylorseer_fs5_N5")
     # 加入teacache 方法的
     if args.teacache == True :
+        # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+        model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
+        pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        if args.dataset == "coco10k":
-            saved_path = os.path.join(args.saved_path,"teacache")
+        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        scheduler = UniPCMultistepScheduler(
+            prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
+        )
+        pipe.transformer.__class__.forward = wan_teacache_forward
+        pipe.scheduler = scheduler
+        # pipe.__class__.generate = t2v_generate
+        pipe.transformer.enable_teacache = True
+
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = 50*2 # 因为有cfg
+        pipe.transformer.teacache_thresh = 0.26 #0.08 0.2 
+        pipe.transformer.accumulated_rel_l1_distance_even = 0
+        pipe.transformer.accumulated_rel_l1_distance_odd = 0
+        pipe.transformer.previous_e0_even = None
+        pipe.transformer.previous_e0_odd = None
+        pipe.transformer.previous_residual_even = None
+        pipe.transformer.previous_residual_odd = None
+        pipe.transformer.coefficients= [2.39676752e+03, -1.31110545e+03,  2.01331979e+02, -8.29855975e+00, 1.37887774e-01]
+        pipe.transformer.ret_steps=1*2
+        pipe.transformer.cutoff_steps=50*2 - 2
+
+        if args.dataset == "vbench":
+            saved_path = os.path.join(args.saved_path,"teacache0.26_fs5")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"teacache_300")
         else:
             saved_path = os.path.join(args.saved_path,"teacache_coco1k")
    
     if args.firstblock_predicterror_taylor == True:
-        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
-        pipe.transformer.__class__.forward = Taylor_firstblock_predicterror_Forward
-        pipe.transformer.enable_teacache = True
-        pipe.transformer.cnt = 0
-        pipe.transformer.num_steps = args.inference_step
+        # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+        model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
+        pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        pipe.transformer.pre_firstblock_hidden_states = None
-        pipe.transformer.previous_residual = None
-        pipe.transformer.pre_compute_hidden =None
+        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        scheduler = UniPCMultistepScheduler(
+            prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
+        )
+        pipe.scheduler = scheduler
+        pipe.__class__.__call__ = wan_step_pipeline
+        pipe.transformer.__class__.forward = wan_firstpredict_step_forward
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = 50
         pipe.transformer.predict_loss  = None
-        pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.03
+        pipe.transformer.threshold= 0.15
+        pipe.transformer.should_calc = False
+
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.03_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstpredict_fs5_cnt2_rel0.15_bO2")
     if args.taylorseer_step == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
@@ -316,23 +336,24 @@ if __name__ == '__main__':
     os.makedirs(saved_path, exist_ok=True)
     total_time = 0
     for i, item in enumerate(tqdm(all_prompts)):
-        # if i==2:
+        # if i==1:
         #     break
         prompt = item.get("prompt_en", "")
         print(prompt)
         start_time = time.time()
         output = pipe(
             prompt=prompt,
+            negative_prompt=negative_prompt,
             height=480,
-            width=640,
-            num_frames=65,
-            num_inference_steps=50,
-            generator=paddle.Generator().manual_seed(42),
+            width=832,
+            num_frames=81,
+            guidance_scale=5.0,
+            generator=paddle.Generator().manual_seed(args.seed),
         ).frames[0]
         end = time.time()
         print("Time used:" , end - start_time)
         total_time += (end - start_time)
-        export_to_video_2(output, os.path.join(saved_path, f"{i}.mp4"), fps=24)
+        export_to_video_2(output, os.path.join(saved_path, f"{prompt}-{args.repeat}.mp4"), fps=16)
     # 平均时间计算
     avg_time = total_time / len(all_prompts)
     file_name = os.path.basename(saved_path)  # -> 'firstblock_taylorseer0.07_300'

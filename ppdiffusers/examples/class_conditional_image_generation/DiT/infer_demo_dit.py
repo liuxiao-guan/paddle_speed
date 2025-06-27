@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os 
+os.environ["FLAGS_enable_use_fa"] = "1"
+from annotated_types import T
 import paddle
 from paddlenlp.trainer import set_seed
 
 from ppdiffusers import DDIMScheduler, DiTPipeline
+import time 
+
 
 dtype = paddle.float32
 pipe = DiTPipeline.from_pretrained("facebook/DiT-XL-2-256", paddle_dtype=dtype)
@@ -26,5 +30,19 @@ class_ids = pipe.get_label_ids(words)
 
 set_seed(42)
 generator = paddle.Generator().manual_seed(0)
+start = paddle.device.cuda.Event(enable_timing=True)
+end = paddle.device.cuda.Event(enable_timing=True)
+start.record()
 image = pipe(class_labels=class_ids, num_inference_steps=25, generator=generator).images[0]
+end.record()
+paddle.device.synchronize()
+print(f"Total Sampling took {start.elapsed_time(end)*0.001} seconds")
+image.save("result_DiT_golden_retriever.png")
+start = paddle.device.cuda.Event(enable_timing=True)
+end = paddle.device.cuda.Event(enable_timing=True)
+start.record()
+image = pipe(class_labels=class_ids, num_inference_steps=25, generator=generator).images[0]
+end.record()
+paddle.device.synchronize()
+print(f"Total Sampling took {start.elapsed_time(end)*0.001} seconds")
 image.save("result_DiT_golden_retriever.png")

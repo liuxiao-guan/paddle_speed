@@ -1,0 +1,78 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+    
+        {
+            "name": "Python: python diffusers_taylor_predicterror_flux.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_predicterror_flux.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "3"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        },
+        {
+            "name": "Python: python diffusers_taylor_predicterrorstop_flux.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_predicterrorstop_flux.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "3"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        },
+        {
+            "name": "Python: python diffusers_taylor_firstblock_predicterror_flux.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_firstblock_predicterror_flux.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        },
+        {
+            "name": "Python: python taylorseer-hunyuan_video.py",
+            "type": "python",
+            "request": "launch",
+            "program": "taylorseer-hunyuan_video.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "5"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_hunyuan"
+        },
+        {
+            "name": "Python: python taylorseer_firstpredict_step_text2video.py",
+            "type": "python",
+            "request": "launch",
+            "program": "taylorseer_firstpredict_step_text2video.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
+        },
+        {
+            "name": "Python: python teacache_t2v.py",
+            "type": "python",
+            "request": "launch",
+            "program": "teacache_t2v.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
+        }
+    ]
+}

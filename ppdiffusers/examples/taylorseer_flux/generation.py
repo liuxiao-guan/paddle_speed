@@ -7,12 +7,8 @@ import paddle
 from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
 from tqdm import tqdm
 
-# from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
-from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
 from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline,PyramidAttentionBroadcastConfig, apply_pyramid_attention_broadcast
-from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
-from ppdiffusers.models import FluxTeaCacheTransformer2DModel
 from teacache_forward import TeaCacheForward
 from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward,Taylor_predicterror_Forward,BlockDanceForward,Taylor_predicterror_base_Forward
 # from ..taylorseer_flux.forwards.double_transformer_forward import taylorseer_flux_double_block_forward
@@ -151,7 +147,13 @@ def parse_args():
         default=False, 
         help='do add predicterror taylorseer block base',
     )
-
+    
+    parser.add_argument(
+        '--sanaprint', 
+        action='store_true', 
+        default=False, 
+        help='do add sanaprint',
+    )
     parser.add_argument(
         '--origin', 
         action='store_true', 
@@ -518,6 +520,27 @@ if __name__ == '__main__':
                 num_inference_steps=args.inference_step,
                 generator=generator,
             ).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
+    if args.sanaprint == True:
+        # test sana sprint
+        from diffusers import SanaSprintPipeline
+        import torch
+        pipeline = SanaSprintPipeline.from_pretrained(
+            "Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers",
+            torch_dtype=torch.bfloat16
+        )
+        pipeline.to("cuda")
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"predicterror_taylorseer_base")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"sanasprint_300")
+        else:
+            saved_path = os.path.join(args.saved_path,"sanasprint_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+        generator =torch.Generator(device="cpu").manual_seed(0)
+        #prompt = "a tiny astronaut hatching from an egg on the moon"
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            image = pipeline(prompt=prompt, num_inference_steps=2,generator=generator).images[0]
             image.save(os.path.join(saved_path, f"{i}.png"))
 
     

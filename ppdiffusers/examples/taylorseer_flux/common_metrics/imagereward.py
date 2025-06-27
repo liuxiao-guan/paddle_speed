@@ -113,17 +113,18 @@ if __name__ == '__main__':
     import os
     import csv
 
-    # 创建一个 CSV 文件并写入标题行
-    # output_csv_path = '/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed/average_scores-random.csv'
-    # with open(output_csv_path, mode='w', newline='') as csvfile:
-    #     csv_writer = csv.writer(csvfile)
-    #     csv_writer.writerow(['n', 'avg_score'])  # 写入表头
-    image_dir_base ="/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16"
-    image_dirs_list = ["DrawBench_blockdance","DrawBench_firstblock_predicterror_taylor0.03", \
-    "DrawBench_firstblock_predicterror_taylor0.13","DrawBench_pab","DrawBench_taylorseer_N2","DrawBench_taylorseer_N5"]
+    # image_dir_base ="/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16"
+    # image_dirs_list = ["DrawBench_blockdance","DrawBench_firstblock_predicterror_taylor0.03", \
+    # "DrawBench_firstblock_predicterror_taylor0.13","DrawBench_pab","DrawBench_taylorseer_N2","DrawBench_taylorseer_N5"]
+    image_dir_base ="/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_vis"
+    image_dirs_list = ["swd_bf16_300","HyperFLUX_300", \
+    "TDD_bf16_300","sanasprint_step2_300"]
+    i =0
     for image_dir in image_dirs_list:
+        # i = i +1
+        # if i==2:
+        #     break
         image_dir = os.path.join(image_dir_base, image_dir)
-    #image_dir = f'/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed/flux_schnell_300'
     
         mode = 'coco'
         output_dir = '/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/eval/DBresults'

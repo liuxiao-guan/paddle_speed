@@ -25,6 +25,7 @@ def wan_block_forward(
         shift_msa, scale_msa, gate_msa, c_shift_msa, c_scale_msa, c_gate_msa = (
             self.scale_shift_table + temb.astype(paddle.float32)
         ).chunk(6, axis=1)
+        #current['type'] = 'full'
         if current['type'] == 'full':
             # 1. Self-attention
             current['module'] = 'self-attention'

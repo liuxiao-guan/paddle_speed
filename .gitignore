@@ -80,9 +80,10 @@ log/
 # MAC
 *.DS_Store
 
-.vscode/
+# .vscode/
 .benchmarks/
 .mypy_cache/
 .history
+*.mp4
 
 *.png
