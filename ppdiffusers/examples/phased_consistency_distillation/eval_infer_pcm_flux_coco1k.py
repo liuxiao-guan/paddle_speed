@@ -1,5 +1,7 @@
 import os
 import csv
+
+from tqdm import tqdm
 os.environ["USE_PEFT_BACKEND"] = "True"
 import paddle
 paddle.device.set_device('gpu:0')
@@ -10,7 +12,8 @@ from pcm_flux_fm_deterministic_scheduler import FLUXPCMFMDeterministicScheduler
 from ppdiffusers import FluxPipeline
 
 # csv_path = "/root/paddlejob/workspace/env_run/output/yjx/coco10k/coco10k/subset.csv"
-save_root = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_vis"
+save_root = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k"
+
 # path_to_lora = "/root/paddlejob/workspace/env_run/output/yjx/PaddleMIX/ppdiffusers/examples/phased_consistency_distillation/outputs/lora_64_fuyun_PCM_sd3_202504142205/paddle_lora_weights.safetensors"
 # path_to_lora = "/root/paddlejob/workspace/env_run/output/yjx/PaddleMIX/ppdiffusers/examples/phased_consistency_distillation/outputs/lora_64_fuyun_PCM_sd3_202504161140/paddle_lora_weights.safetensors"
 # path_to_lora = "/root/paddlejob/workspace/env_run/output/yjx/PaddleMIX/ppdiffusers/examples/phased_consistency_distillation/outputs/lora_64_fuyun_PCM_sd3_202504181911/paddle_lora_weights.safetensors"
@@ -20,13 +23,14 @@ save_root = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_
 # path_to_lora = "/root/paddlejob/workspace/env_run/output/yjx/PaddleMIX/ppdiffusers/examples/phased_consistency_distillation/outputs/lora_64_fuyun_PCM_sd3_202504271200/checkpoint-20000/paddle_lora_weights.safetensors"
 # path_to_lora = "/root/paddlejob/workspace/env_run/output/yjx/flux_pcm/PaddleMIX/ppdiffusers/examples/phased_consistency_distillation/outputs/lora_64_fuyun_PCM_flux_202505301409/paddle_lora_weights.safetensors"
 # path_to_lora = "/root/paddlejob/workspace/env_run/output/yjx/flux_pcm/PaddleMIX/ppdiffusers/examples/phased_consistency_distillation/outputs/paddle_lora_weights_202506070019.safetensors"
+
 path_to_lora = "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506111424/paddle_lora_weights.safetensors"
 path_lora = [
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506172108/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506181652/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506192039/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506201725/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506210928/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506172108/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506181652/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506192039/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506201725/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506210928/paddle_lora_weights.safetensors",
 "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506221613/paddle_lora_weights.safetensors",
 "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506221639/paddle_lora_weights.safetensors"
 
@@ -39,7 +43,7 @@ pipe = FluxPipeline.from_pretrained(
         # paddle_dtype="bfloat16"
     )
 for path_to_lora in path_lora:
-    prompt_path = "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/prompts/prompt.txt"
+    prompt_path = "/root/paddlejob/workspace/env_run/test_data/coco1k/coco1k.tsv"
 
     scheduler_type = "deterministic" # deterministic or stochastic
     num_pcm_timesteps = 100
@@ -78,14 +82,12 @@ for path_to_lora in path_lora:
     save_dir = os.path.join(save_root, save_dir_name)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-
-    with open(prompt_path, 'r') as file:
-        data = file.readlines()
-    captions = []
-    for cap in data:
-        if cap != '\n':
-            captions.append(cap.strip())
-    print(captions[:3])
+    import pickle
+    import pandas as pd
+    # 读取 .tsv 文件（tab 分隔）
+    df = pd.read_csv(os.path.join("/root/paddlejob/workspace/env_run/test_data/coco1k","coco1k.tsv"), sep="\t")
+    # 假设列名为 "prompt"，提取成 list
+    captions = df['caption_en'].tolist()
     import gc
     del pipe
     gc.collect()
@@ -98,6 +100,7 @@ for path_to_lora in path_lora:
         paddle_dtype=paddle.bfloat16
         # paddle_dtype="bfloat16"
     )
+    
     pipe.load_lora_weights(path_to_lora)
 
     print(
@@ -109,7 +112,9 @@ for path_to_lora in path_lora:
         pipe.dtype
     )
 
-    for i, prompt in enumerate(captions):
+    for i, prompt in tqdm(enumerate(captions), total=len(captions)):
+        # if i > 5:
+        #     break
         print(f"{i}: {prompt}")
         with paddle.no_grad():
             result_image = pipe(

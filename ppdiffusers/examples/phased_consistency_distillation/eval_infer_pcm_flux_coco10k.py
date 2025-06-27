@@ -86,7 +86,6 @@ print(
 )
 
 for i, prompt in tqdm(enumerate(captions), total=len(captions)):
-    if i<1540: continue
     print(f"{i}: {prompt}")
     with paddle.no_grad():
         result_image = pipe(
