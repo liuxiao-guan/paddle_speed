@@ -1,12 +1,12 @@
-CUDA_VISIBLE_DEVICES=5 python generation_wan_video.py \
---inference_step 50 \
---seed 42 \
---dataset 'vbench' \
---repeat 0 \
---firstblock_predicterror_taylor
+# CUDA_VISIBLE_DEVICES=5 python generation_wan_video.py \
+# --inference_step 50 \
+# --seed 42 \
+# --dataset 'vbench' \
+# --repeat 0 \
+# --firstblock_predicterror_taylor
 
 
-CUDA_VISIBLE_DEVICES=5 python generation_wan_video.py \
+CUDA_VISIBLE_DEVICES=6 python generation_wan_video.py \
 --inference_step 50 \
 --seed 42 \
 --dataset 'vbench' \

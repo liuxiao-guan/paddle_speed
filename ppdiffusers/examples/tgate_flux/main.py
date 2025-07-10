@@ -146,6 +146,8 @@ if __name__ == '__main__':
                 "black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
         pipe = TgateFLUXLoader(pipe)
         for i in range(2):
+            import time
+            start = time.time()
             image = pipe.tgate(
                 prompt=args.prompt,
                 height=1024,
@@ -158,6 +160,8 @@ if __name__ == '__main__':
                 generator=generator,
             ).images[0]
             image.save(saved_path)
+            end = time.time()
+            print(f"Time takes:{end - start}")
 
     elif args.model == 'pixart_alpha':
         pipe = PixArtAlphaPipeline.from_pretrained(

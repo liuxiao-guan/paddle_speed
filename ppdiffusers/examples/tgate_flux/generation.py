@@ -175,7 +175,7 @@ if __name__ == '__main__':
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"tgate_50steps")
         else:
-            saved_path = os.path.join(args.saved_path,"tgate_50steps_coco1k")
+            saved_path = os.path.join(args.saved_path,f"tgate_50steps_gs{args.gate_step}_si{args.sp_interval}_fi{args.fi_interval}coco1k")
         os.makedirs(saved_path, exist_ok=True)
         total_time =0 
         for i, prompt in enumerate(tqdm(all_prompts)):

@@ -36,6 +36,18 @@
             "console": "integratedTerminal",
             "args": [],
             "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        },
+        {
+            "name": "Python: python origin_flux.py",
+            "type": "python",
+            "request": "launch",
+            "program": "origin_flux.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
         }
     ]
 }

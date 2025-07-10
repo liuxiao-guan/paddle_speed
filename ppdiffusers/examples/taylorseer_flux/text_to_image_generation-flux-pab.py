@@ -16,21 +16,22 @@ import paddle
 
 from ppdiffusers import FluxPipeline
 from ppdiffusers import CogVideoXPipeline,PyramidAttentionBroadcastConfig, apply_pyramid_attention_broadcast
-
+import time 
 
 pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
 
 config = PyramidAttentionBroadcastConfig(
-    spatial_attention_block_skip_range=10,
-    temporal_attention_block_skip_range = 2,
-    cross_attention_block_skip_range = 4,
-    spatial_attention_timestep_skip_range=(100, 950),
+    spatial_attention_block_skip_range=20,
+    # temporal_attention_block_skip_range = 2,
+    # cross_attention_block_skip_range = 4,
+    spatial_attention_timestep_skip_range=(50, 1000),
     current_timestep_callback=lambda: pipe._current_timestep,
 )
 apply_pyramid_attention_broadcast(pipe.transformer, config)
 
 prompt = "A cat holding a sign that says hello world"
 for i in range(2):
+    start =time.time()
     image = pipe(
         prompt,
         height=1024,
@@ -40,4 +41,6 @@ for i in range(2):
         max_sequence_length=512,
         generator=paddle.Generator().manual_seed(42)
     ).images[0]
+    end = time.time()
+    print(f'Time taken {end - start:.2f} seconds.')
     image.save("text_to_image_generation-flux-dev-result11.png")

@@ -1,0 +1,1 @@
+tgate_50steps_gs25_si20_fi20coco1k: Total 12748.28s, Avg 12.75s/image

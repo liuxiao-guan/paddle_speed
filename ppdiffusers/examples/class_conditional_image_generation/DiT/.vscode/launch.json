@@ -12,6 +12,18 @@
             "console": "integratedTerminal",
             "args": [],
             "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/class_conditional_image_generation/DiT"
+        },
+        {
+            "name": "Python: python infer_demo_dit.py",
+            "type": "python",
+            "request": "launch",
+            "program": "infer_demo_dit.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/class_conditional_image_generation/DiT"
         }
     ]
 }

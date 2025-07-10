@@ -1,0 +1,1 @@
+timeemb_predicterror_taylor_coco1k: Total 8384.65s, Avg 8.38s/image

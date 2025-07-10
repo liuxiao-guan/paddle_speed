@@ -1,0 +1,1 @@
+DrawBench_taylorseer_N5O2_seed42: Total 1585.55s, Avg 7.93s/image

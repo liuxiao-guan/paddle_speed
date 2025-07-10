@@ -1,0 +1,1 @@
+teacache0.38_coco1k: Total 12761.24s, Avg 12.76s/image

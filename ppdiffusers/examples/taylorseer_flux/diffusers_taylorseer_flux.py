@@ -17,7 +17,7 @@ num_inference_steps = 50
 seed = 42
 prompt = "An image of a squirrel in Picasso style"
 #
-pipeline = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+pipeline = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
 #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
 
 # TaylorSeer settings
@@ -35,25 +35,21 @@ for single_transformer_block in pipeline.transformer.single_transformer_blocks:
 
 parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
 
-paddle.device.cuda.max_memory_reserved()
-#start_time = time.time()
-start = paddle.device.cuda.Event(enable_timing=True)
-end = paddle.device.cuda.Event(enable_timing=True)
+
+# paddle.flops(pipeline.transformer, input_list=input_list, print_detail=True)
+
+
 for i in range(2):
-    start.record()
+    start_time = time.time()
     img = pipeline(
         prompt, 
         num_inference_steps=num_inference_steps,
         generator=paddle.Generator("cpu").manual_seed(seed)
         ).images[0]
 
-    end.record()
-    paddle.device.synchronize()
-    elapsed_time = start.elapsed_time(end) * 1e-3
-    peak_memory = paddle.device.cuda.max_memory_allocated()
+    end_time = time.time()
+    print(f" time takes: {end_time - start_time:.2f} sec")
 
     img.save("{}.png".format('taylorseer_' + prompt))
 
-    print(
-        f"epoch time: {elapsed_time:.2f} sec, parameter memory: {parameter_peak_memory/1e9:.2f} GB, memory: {peak_memory/1e9:.2f} GB"
-    )
+    

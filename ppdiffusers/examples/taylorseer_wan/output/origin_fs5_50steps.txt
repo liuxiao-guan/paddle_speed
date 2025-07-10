@@ -1,1 +1,1 @@
-origin_fs5_50steps: Total 184.83s, Avg 0.20s/image
+origin_fs5_50steps: Total 173260.89s, Avg 183.15s/image

@@ -17,29 +17,34 @@ import paddle
 from forwards import BlockDanceForward 
 from ppdiffusers import FluxPipeline
 from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
+import time
 
 
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
 FluxTransformer2DModel.forward = BlockDanceForward
 
 pipe.transformer.previous_block = None
 pipe.transformer.previous_block_encoder = None
 pipe.transformer.previous_single_block = None
 pipe.transformer.step_start = 100
-pipe.transformer.step_end = 950
+pipe.transformer.step_end = 900
 pipe.transformer.block_step_single = 30
 pipe.transformer.block_step = 15
-pipe.transformer.block_step_N = 6
+pipe.transformer.block_step_N = 4
 pipe.transformer.count = 0
 
 prompt = "An image of a squirrel in Picasso style"
-image = pipe(
-    prompt,
-    height=1024,
-    width=1024,
-    guidance_scale=3.5,
-    num_inference_steps=50,
-    max_sequence_length=512,
-    generator=paddle.Generator().manual_seed(42),
-).images[0]
-image.save("text_to_image_generation-flux-dev-result.png")
+for i in range(2):
+    start = time.time()
+    image = pipe(
+        prompt,
+        height=1024,
+        width=1024,
+        guidance_scale=3.5,
+        num_inference_steps=50,
+        max_sequence_length=512,
+        generator=paddle.Generator().manual_seed(42),
+    ).images[0]
+    end = time.time()
+    print(f'Time taken {end - start:.2f} seconds.')
+    image.save("text_to_image_generation-flux-dev-result.png")

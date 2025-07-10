@@ -1,0 +1,1 @@
+DrawBench_timeemb_predicterror: Total 1698.94s, Avg 8.49s/image

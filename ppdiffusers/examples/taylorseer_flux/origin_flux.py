@@ -7,6 +7,9 @@ import paddle.nn.functional as F
 from ppdiffusers.models.modeling_outputs import  Transformer2DModelOutput
 from ppdiffusers.utils import USE_PEFT_BACKEND, is_torch_version, logger, scale_lora_layers, unscale_lora_layers
 import matplotlib.pyplot as plt 
+
+import paddle.utils.flops
+import torch 
 def TeaCacheForward(
         self,
         hidden_states: paddle.Tensor,
@@ -102,6 +105,7 @@ def TeaCacheForward(
         
         hidden_states_list = []
         encoder_hidden_states_list =[ ]
+        hidden_states_first_block = []
         for index_block, block in enumerate(self.transformer_blocks):
             if self.training and self.gradient_checkpointing:
 
@@ -132,6 +136,9 @@ def TeaCacheForward(
                     image_rotary_emb=image_rotary_emb,
                     joint_attention_kwargs=joint_attention_kwargs,
                 )
+                if index_block ==0:
+                    self.hidden_states_first_block.append(hidden_states)
+
 
             # controlnet residual
             if controlnet_block_samples is not None:
@@ -144,8 +151,6 @@ def TeaCacheForward(
                     )
                 else:
                     hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
-            hidden_states_list.append(hidden_states)
-            encoder_hidden_states_list.append(encoder_hidden_states)
         hidden_states = paddle.concat([encoder_hidden_states, hidden_states], axis=1)
 
         for index_block, block in enumerate(self.single_transformer_blocks):
@@ -185,23 +190,12 @@ def TeaCacheForward(
                     hidden_states[:, encoder_hidden_states.shape[1] :, ...]
                     + controlnet_single_block_samples[index_block // interval_control]
                 )
+        self.hidden_states_list.append(hidden_states)
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
 
         hidden_states = self.norm_out(hidden_states, temb)
         output = self.proj_out(hidden_states)
-
-
-        delta_hidden = []
-        delta_encoder = []
-        import os 
-        for i in range(1, len(hidden_states_list)):
-            # 计算 L2 范数的差值
-            dh = ( hidden_states_list[i] - hidden_states_list[i-1]).abs().mean()
-            de = (encoder_hidden_states_list[i] - encoder_hidden_states_list[i-1]).abs().mean()
-            
-            delta_hidden.append(dh)
-            delta_encoder.append(de)
-        self.delta_hidden_array.append(delta_hidden)
+        #self.delta_hidden_array.append(delta_hidden)
         # # 画图
         # plt.plot(delta_hidden, label="Δ hidden_states")
         # plt.plot(delta_encoder, label="Δ encoder_hidden_states")
@@ -226,14 +220,16 @@ from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
+from torch.utils.flop_counter import FlopCounterMode
 
-import seaborn as sns
+
+# import seaborn as sns
 seed = 42
-prompt = "An image of a squirrel in Picasso style"
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
-        
+prompt = "An image of a squirrel"
+pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+
 FluxTransformer2DModel.forward = TeaCacheForward
-pipe.transformer.enable_teacache = True
+pipe.transformer.enable_teacache = False
 pipe.transformer.cnt = 0
 pipe.transformer.num_steps = 50
 pipe.transformer.rel_l1_thresh = (
@@ -242,21 +238,54 @@ pipe.transformer.rel_l1_thresh = (
 pipe.transformer.accumulated_rel_l1_distance = 0
 pipe.transformer.previous_modulated_input = None
 pipe.transformer.previous_residual = None
-pipe.transformer.delta_hidden_array = []
-for i in range(1):
-    # pipe.to("cuda")
+# pipe.transformer.delta_hidden = []
+# pipe.transformer.delta_hidden_firstblock = []
+pipe.transformer.hidden_states_list = []
+pipe.transformer.hidden_states_first_block = []
+delta_hidden =[]
+delta_hidden_firstblock =[]
+from torch.utils.flop_counter import FlopCounterMode
+# flop_counter = FlopCounterMode(pipe.transformer)
+input_list =[[1, 4096, 64], [1, 512, 4096], [1, 768],[1],[4096, 3], [512, 3],  [1]]
+input_=[prompt,  50, paddle.Generator().manual_seed(42)]
+
+override_args = {
+    "prompt": "A dog in a hat",
+    "num_inference_steps": 50,
+    "generator": paddle.Generator().manual_seed(42)
+}
+
+import time
+for i in range(2):
+    start_time = time.time()
     img = pipe(
         prompt, 
         num_inference_steps=50,
         generator=paddle.Generator().manual_seed(seed)
         ).images[0]
-    delta_hidden_array = np.array(pipe.transformer.delta_hidden_array)  # shape: [num_steps, num_blocks]
+    end = time.time()
+    print(f" time takes: {end - start_time:.2f} sec")
+    img.save("origin.png")
+    #delta_hidden_array = np.array(pipe.transformer.delta_hidden_array)  # shape: [num_steps, num_blocks]
+    for i in range(len(pipe.transformer.hidden_states_list)):
     
+        dh = ( pipe.transformer.hidden_states_list[i] - pipe.transformer.hidden_states_list[i-1]).abs().mean()/ pipe.transformer.hidden_states_list[i].abs().mean()
+        de = (pipe.transformer.hidden_states_first_block[i] - pipe.transformer.hidden_states_first_block[i-1]).abs().mean()/pipe.transformer.hidden_states_first_block[i].abs().mean()
+        delta_hidden.append(dh)
+        delta_hidden_firstblock.append(de)
+
     plt.figure(figsize=(10, 6))
-    sns.heatmap(delta_hidden_array, cmap="viridis", cbar=True)
-    plt.xlabel("Block Index")
-    plt.ylabel("Step Index")
-    plt.title("Δ Hidden States Heatmap (L2 Mean Difference)")
+    # sns.heatmap(delta_hidden_array, cmap="viridis", cbar=True)
+    plt.plot(delta_hidden_firstblock, label="Δ firtblock hidden")
+    plt.plot(delta_hidden, label="Δ hidden")
+    # plt.plot(delta_encoder, label="Δ encoder_hidden_states")
+    plt.xlabel("diffusion process")
+    plt.ylabel("difference between consecutive timesteps")
+    plt.title("Δ Hidden States(L2 Mean Difference)")
+    plt.legend()
     plt.show()
-    plt.savefig("Teacache_Flux_hmap.png")
-    #img.save("{}.png".format('Teacache_Flux_hmap'))
+    plt.savefig("Teacache_Flux_relation.png")
+        #img.save("{}.png".format('Teacache_Flux_hmap'))
+    # 总 FLOPs 数（float）
+       
+        # print(flop_counter.get_table())

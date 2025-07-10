@@ -155,6 +155,27 @@ def parse_args():
         help='do add sanaprint',
     )
     parser.add_argument(
+        '--sana', 
+        action='store_true', 
+        default=False, 
+        help='do add sana',
+    )
+    
+    
+    parser.add_argument(
+        '--hyper_flux', 
+        action='store_true', 
+        default=False, 
+        help='do add hyper_flux',
+    )
+    parser.add_argument(
+        '--flux_dev', 
+        action='store_true', 
+        default=False, 
+        help='do add hyper_flux',
+    )
+    
+    parser.add_argument(
         '--origin', 
         action='store_true', 
         default=False, 
@@ -315,7 +336,7 @@ if __name__ == '__main__':
         FluxTransformer2DModel.forward = TeaCacheForward
         pipe.transformer.enable_teacache = True
         pipe.transformer.cnt = 0
-        pipe.transformer.num_steps = 28
+        pipe.transformer.num_steps = 50
         pipe.transformer.rel_l1_thresh = (
             0.25  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
         )
@@ -542,6 +563,91 @@ if __name__ == '__main__':
         for i, prompt in enumerate(tqdm(all_prompts)):
             image = pipeline(prompt=prompt, num_inference_steps=2,generator=generator).images[0]
             image.save(os.path.join(saved_path, f"{i}.png"))
+    if args.hyper_flux == True:
+        import torch
+        from diffusers import FluxPipeline
+        from huggingface_hub import hf_hub_download
+        base_model_id = "black-forest-labs/FLUX.1-dev"
+        repo_name = "ByteDance/Hyper-SD"
+        # Take 8-steps lora as an example
+        ckpt_name = "Hyper-FLUX.1-dev-8steps-lora.safetensors"
+        # Load model, please fill in your access tokens since FLUX.1-dev repo is a gated model.
+        pipe = FluxPipeline.from_pretrained(base_model_id, token="xxx")
+        pipe.load_lora_weights(hf_hub_download(repo_name, ckpt_name))
+        pipe.fuse_lora(lora_scale=0.125)
+        pipe.to("cuda", dtype=torch.float16)
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"predicterror_taylorseer_base")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"hyper_flux_300")
+        else:
+            saved_path = os.path.join(args.saved_path,"hyper_flux_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            image=pipe(prompt=prompt, num_inference_steps=4, guidance_scale=3.5,generator =torch.Generator(device="cpu").manual_seed(0)).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
+    if args.sana == True:
+        import torch
+        from diffusers import SanaPipeline
+        
+        pipe = SanaPipeline.from_pretrained(
+            "Efficient-Large-Model/SANA1.5_1.6B_1024px_diffusers",
+            torch_dtype=torch.bfloat16,
+        )
+        pipe.to("cuda")
+
+        pipe.vae.to(torch.bfloat16)
+        pipe.text_encoder.to(torch.bfloat16)
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"sana_coco10k")
+        elif args.dataset == "300Prompt":
+            args.saved_path = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_vis"
+            
+            saved_path = os.path.join(args.saved_path,"sana_300")
+        else:
+            args.saved_path = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k"
+            saved_path = os.path.join(args.saved_path,"sana_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            image = pipe(
+                prompt=prompt,
+                height=1024,
+                width=1024,
+                guidance_scale=4.5,
+                num_inference_steps=20,
+                generator =torch.Generator(device="cpu").manual_seed(0)
+            )[0]
+            image[0].save(os.path.join(saved_path, f"{i}.png"))
+    if args.flux_dev == True:
+        import torch
+        from diffusers import FluxPipeline
+
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16)
+        pipe = pipe.to("cuda")
+        # pipe.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"flux-dev_coco10k")
+        elif args.dataset == "300Prompt":
+            args.saved_path = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_vis"
+            
+            saved_path = os.path.join(args.saved_path,"flux-dev_300")
+        else:
+            args.saved_path = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k"
+            saved_path = os.path.join(args.saved_path,"flux-dev_coco1k")
+        os.makedirs(saved_path, exist_ok=True)
+        for i, prompt in enumerate(tqdm(all_prompts)):
+            image = pipe(
+                prompt,
+                height=1024,
+                width=1024,
+                guidance_scale=3.5,
+                num_inference_steps=50,
+                max_sequence_length=512,
+                generator=torch.Generator("cpu").manual_seed(0)
+            ).images[0]
+            image.save(os.path.join(saved_path, f"{i}.png"))
+
 
     
 

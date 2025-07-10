@@ -8,6 +8,11 @@ from PIL import Image
 from pcm_flux_fm_deterministic_scheduler import FLUXPCMFMDeterministicScheduler
 # from pcm_fm_stochastic_scheduler import PCMFMStochasticScheduler
 from ppdiffusers import FluxPipeline
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--guidance_scale", type=float, default=3.0, help="Set guidance scale")
+args = parser.parse_args()
 
 # csv_path = "/root/paddlejob/workspace/env_run/output/yjx/coco10k/coco10k/subset.csv"
 save_root = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_vis"
@@ -22,13 +27,13 @@ save_root = "/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_
 # path_to_lora = "/root/paddlejob/workspace/env_run/output/yjx/flux_pcm/PaddleMIX/ppdiffusers/examples/phased_consistency_distillation/outputs/paddle_lora_weights_202506070019.safetensors"
 path_to_lora = "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506111424/paddle_lora_weights.safetensors"
 path_lora = [
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506172108/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506181652/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506192039/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506201725/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506210928/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506221613/paddle_lora_weights.safetensors",
-"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506221639/paddle_lora_weights.safetensors"
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506172108/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506181652/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506192039/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506201725/paddle_lora_weights.safetensors",
+# "/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506210928/paddle_lora_weights.safetensors",
+"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506232205/paddle_lora_weights.safetensors",
+#"/root/paddlejob/workspace/env_run/test_data/lora_64_fuyun_PCM_flux_202506221639/paddle_lora_weights.safetensors"
 
 ]
 pipe = FluxPipeline.from_pretrained(
@@ -43,7 +48,7 @@ for path_to_lora in path_lora:
 
     scheduler_type = "deterministic" # deterministic or stochastic
     num_pcm_timesteps = 100
-    guidance_scale = 3.5
+    guidance_scale = args.guidance_scale
     height = 1024
     width = 1024
     batch_size = 1
@@ -110,7 +115,8 @@ for path_to_lora in path_lora:
     )
 
     for i, prompt in enumerate(captions):
-        print(f"{i}: {prompt}")
+        # if i >1:
+        #     break
         with paddle.no_grad():
             result_image = pipe(
                 prompt=prompt,

@@ -1,0 +1,1 @@
+origin_50steps: Total 18.80s, Avg 0.00s/image

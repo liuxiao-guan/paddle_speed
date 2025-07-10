@@ -5,13 +5,24 @@
 # --repeat 0 \
 # --taylorseer
 
+CUDA_VISIBLE_DEVICES=1 python generation_wan_video.py \
+--inference_step 50 \
+--seed 42 \
+--dataset 'vbench' \
+--repeat 0 \
+--pab
 
 CUDA_VISIBLE_DEVICES=1 python generation_wan_video.py \
 --inference_step 50 \
---seed 124 \
+--seed 256 \
 --dataset 'vbench' \
---repeat 1 \
+--repeat 2 \
 --taylorseer
+
+
+
+
+
 
 
 

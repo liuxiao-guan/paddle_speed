@@ -1,11 +1,11 @@
 which python
 
-CUDA_VISIBLE_DEVICES=0 python main.py \
+CUDA_VISIBLE_DEVICES=1 python main.py \
 --prompt "A cat holding a sign that says hello world" \
 --model 'flux' \
 --gate_step 25 \
---sp_interval 2 \
---fi_interval 1 \
+--sp_interval 6 \
+--fi_interval 4 \
 --warm_up 2 \
 --saved_path './generated_tmp/flux/' \
 --inference_step 50 \

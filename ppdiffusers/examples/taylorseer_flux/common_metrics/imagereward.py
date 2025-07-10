@@ -116,9 +116,8 @@ if __name__ == '__main__':
     # image_dir_base ="/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16"
     # image_dirs_list = ["DrawBench_blockdance","DrawBench_firstblock_predicterror_taylor0.03", \
     # "DrawBench_firstblock_predicterror_taylor0.13","DrawBench_pab","DrawBench_taylorseer_N2","DrawBench_taylorseer_N5"]
-    image_dir_base ="/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_vis"
-    image_dirs_list = ["swd_bf16_300","HyperFLUX_300", \
-    "TDD_bf16_300","sanasprint_step2_300"]
+    image_dir_base ="/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16"
+    image_dirs_list = ["DrawBench_firstblock_predicterror_taylor0.08","DrawBench_timeemb_predicterror"]
     i =0
     for image_dir in image_dirs_list:
         # i = i +1
@@ -136,4 +135,4 @@ if __name__ == '__main__':
 
         score_save_path = os.path.join(output_dir, f'{class_name}.txt')
 
-        score_list, avg_score = evaluate(mode, prompt_path, image_dir, model_path="/root/.cache/ImageReward/ImageReward.pt", batch_size=64, score_save_path=score_save_path)
+        score_list, avg_score = evaluate(mode, prompt_path, image_dir, model_path="/root/.cache/ImageReward/ImageReward.pt", batch_size=100, score_save_path=score_save_path)

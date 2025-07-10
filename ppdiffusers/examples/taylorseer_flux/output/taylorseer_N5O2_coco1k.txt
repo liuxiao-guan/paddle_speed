@@ -1,0 +1,1 @@
+taylorseer_N5O2_coco1k: Total 8211.09s, Avg 8.21s/image

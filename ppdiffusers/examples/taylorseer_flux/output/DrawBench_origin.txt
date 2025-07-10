@@ -1,0 +1,1 @@
+DrawBench_origin: Total 4727.06s, Avg 23.64s/image

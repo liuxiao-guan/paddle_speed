@@ -1,0 +1,1 @@
+blockdance_R900-100_B30-15_N4_coco1k: Total 15662.07s, Avg 15.66s/image

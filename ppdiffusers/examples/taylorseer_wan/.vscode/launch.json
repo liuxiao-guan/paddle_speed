@@ -24,6 +24,18 @@
             "console": "integratedTerminal",
             "args": [],
             "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
+        },
+        {
+            "name": "Python: python text2video_eval.py",
+            "type": "python",
+            "request": "launch",
+            "program": "text2video_eval.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "5"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
         }
     ]
 }

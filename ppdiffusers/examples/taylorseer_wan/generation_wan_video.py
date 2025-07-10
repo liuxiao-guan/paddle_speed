@@ -9,10 +9,11 @@ from paddlenlp.transformers.llama.tokenizer_fast import LlamaTokenizerFast
 from ppdiffusers import HunyuanVideoPipeline, HunyuanVideoTransformer3DModel
 from ppdiffusers.utils import export_to_video_2
 import json
-from ppdiffusers import AutoencoderKLWan, WanPipeline
+from ppdiffusers import AutoencoderKLWan, WanPipeline,PyramidAttentionBroadcastConfig, apply_pyramid_attention_broadcast
 from ppdiffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 from ppdiffusers.utils import export_to_video_2
 from forwards import wan_forward,wan_block_forward,wan_pipeline, wan_firstpredict_step_forward,wan_step_pipeline,wan_teacache_forward
+
 import time
 
 # from teacache_forward import TeaCacheForward
@@ -213,18 +214,22 @@ if __name__ == '__main__':
     if args.tgate == True :
         pass
     if args.pab == True:
-        # pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
-
-        # config = PyramidAttentionBroadcastConfig(
-        #     spatial_attention_block_skip_range=10,
-        #     temporal_attention_block_skip_range = 2,
-        #     cross_attention_block_skip_range = 4,
-        #     spatial_attention_timestep_skip_range=(100, 950),
-        #     current_timestep_callback=lambda: pipe._current_timestep,
-        # )
-        # apply_pyramid_attention_broadcast(pipe.transformer, config)
-        if args.dataset == "coco10k":
-            saved_path = os.path.join(args.saved_path,"pab")
+        model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
+        pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
+        config = PyramidAttentionBroadcastConfig(
+            spatial_attention_block_skip_range=20,
+            spatial_attention_timestep_skip_range=(100, 950),
+            current_timestep_callback=lambda: pipe._current_timestep,
+        )
+        apply_pyramid_attention_broadcast(pipe.transformer, config)
+        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        scheduler = UniPCMultistepScheduler(
+            prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
+        )
+        pipe.scheduler = scheduler
+        if args.dataset == "vbench":
+            saved_path = os.path.join(args.saved_path,"pab_N20_B100-950")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"pab_300")
         else:

@@ -1,0 +1,1 @@
+teacache0.26_fs5: Total 58354.98s, Avg 61.69s/image

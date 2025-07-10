@@ -1,0 +1,1 @@
+origin_50steps_coco1k: Total 23954.16s, Avg 23.95s/image

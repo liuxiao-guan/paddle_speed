@@ -1,12 +1,12 @@
 
-CUDA_VISIBLE_DEVICES=1 nohup python generation.py \
+CUDA_VISIBLE_DEVICES=1 python generation.py \
 --gate_step 25 \
 --sp_interval 5 \
 --fi_interval 1 \
 --warm_up 2 \
 --inference_step 50 \
 --seed 124 \
---tgate > output_tgate_50steps.log 2>&1 &
+--tgate 
 
 
 CUDA_VISIBLE_DEVICES=2 python generation.py \

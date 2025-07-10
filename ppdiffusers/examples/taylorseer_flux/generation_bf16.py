@@ -8,16 +8,17 @@ from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
 from tqdm import tqdm
 import time
 
-# from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
+from tgate import TgateSDXLLoader, TgateSDLoader,TgateFLUXLoader,TgatePixArtAlphaLoader
 from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
 from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline,PyramidAttentionBroadcastConfig, apply_pyramid_attention_broadcast
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 # from ppdiffusers.models import FluxTeaCacheTransformer2DModel
-from teacache_forward import TeaCacheForward
+from forwards import TeaCacheForward
 from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward,Taylor_predicterror_Forward, \
 BlockDanceForward,Taylor_predicterror_base_Forward,Taylor_firstblock_predicterror_Forward,taylorseer_flux_forward, \
-    taylorseer_flux_double_block_forward, taylorseer_flux_single_block_forward,taylorseer_step_flux_forward,Taylor_firstblock_pre_predicterror_Forward
+    taylorseer_flux_double_block_forward, taylorseer_flux_single_block_forward,taylorseer_step_flux_forward, \
+    Taylor_firstblock_pre_predicterror_Forward,Taylor_timeemb_predicterror_Forward
 
 import sys
 sys.stdout.isatty = lambda: False
@@ -154,6 +155,12 @@ def parse_args():
     )
     
     parser.add_argument(
+        '--timeemb_predicterror_taylor', 
+        action='store_true', 
+        default=False, 
+        help='do add timeembedding taylorseer',
+    )
+    parser.add_argument(
         '--firstblock_pre_predicterror_taylor', 
         action='store_true', 
         default=False, 
@@ -276,7 +283,7 @@ if __name__ == '__main__':
         elif args.dataset =="DrawBench":
             saved_path = os.path.join(args.saved_path,"DrawBench_pab")
         else:
-            saved_path = os.path.join(args.saved_path,"pab_coco1k")
+            saved_path = os.path.join(args.saved_path,"pab_R50-950_N10_coco1k")
     if args.blockdance == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         FluxTransformer2DModel.forward = BlockDanceForward
@@ -284,11 +291,11 @@ if __name__ == '__main__':
         pipe.transformer.previous_block = None
         pipe.transformer.previous_block_encoder = None
         pipe.transformer.previous_single_block = None
-        pipe.transformer.step_start = 100
+        pipe.transformer.step_start = 50
         pipe.transformer.step_end = 950
-        pipe.transformer.block_step_single = 30
+        pipe.transformer.block_step_single = 33
         pipe.transformer.block_step = 15
-        pipe.transformer.block_step_N = 8
+        pipe.transformer.block_step_N = 10
         pipe.transformer.count = 0
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"blockdance")
@@ -297,7 +304,7 @@ if __name__ == '__main__':
         elif args.dataset =="DrawBench":
             saved_path = os.path.join(args.saved_path,"DrawBench_blockdance")
         else:
-            saved_path = os.path.join(args.saved_path,"blockdance_R950_B30-15_N8_coco1k")
+            saved_path = os.path.join(args.saved_path,"blockdance_R950-50_B33-15_N10_coco1k")
     if args.taylorseer == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
@@ -317,9 +324,9 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"taylorseer_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_taylorseer_N2")
+            saved_path = os.path.join(args.saved_path,"DrawBench_taylorseer_N5O2_seed42")
         else:
-            saved_path = os.path.join(args.saved_path,"taylorseer_N5_coco1k")
+            saved_path = os.path.join(args.saved_path,"taylorseer_N5O2_coco1k")
     # 加入teacache 方法的
     if args.teacache == True :
 
@@ -330,7 +337,7 @@ if __name__ == '__main__':
         pipe.transformer.cnt = 0
         pipe.transformer.num_steps = 28
         pipe.transformer.rel_l1_thresh = (
-            0.08  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
+            0.15  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
         )
         pipe.transformer.accumulated_rel_l1_distance = 0
         pipe.transformer.previous_modulated_input = None
@@ -342,7 +349,7 @@ if __name__ == '__main__':
         elif args.dataset =="DrawBench":
             saved_path = os.path.join(args.saved_path,"DrawBench_teacache0.25")
         else:
-            saved_path = os.path.join(args.saved_path,"teacache0.08_coco1k")
+            saved_path = os.path.join(args.saved_path,"teacache0.15_coco1k")
     if args.firstblock_taylorseer == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
@@ -355,7 +362,7 @@ if __name__ == '__main__':
         pipe.transformer.cnt = 0
         pipe.transformer.num_steps = 50
         pipe.transformer.residual_diff_threshold = (
-            0.07 #0.05  7.6s 
+            0.10 #0.05  7.6s 
         )
         pipe.transformer.downsample_factor=(1)
         pipe.transformer.accumulated_rel_l1_distance = 0
@@ -368,7 +375,7 @@ if __name__ == '__main__':
         elif args.dataset =="DrawBench":
             saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_taylorseer")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.07_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.10_coco1k")
     if args.firstblock_taylorseer_block == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
@@ -405,7 +412,8 @@ if __name__ == '__main__':
             saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_taylorseer_block_28")
         else:
             saved_path = os.path.join(args.saved_path,"firstblock_taylorseer0.07_coco1k")
-    # if args.predicterror_taylorseer_block == True:
+    
+   # if args.predicterror_taylorseer_block == True:
     #     pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
     #     pipe.transformer.__class__.forward = Taylor_predicterror_Forward
     #     pipe.transformer.enable_teacache = True
@@ -458,15 +466,36 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.13
+        pipe.transformer.threshold= 0.05
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.13")
+            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.08")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.03_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.05_coco1k")
+    if args.timeemb_predicterror_taylor==True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+        pipe.transformer.__class__.forward = Taylor_timeemb_predicterror_Forward
+        pipe.transformer.enable_teacache = True
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = args.inference_step
+
+        pipe.transformer.pre_firstblock_hidden_states = None
+        pipe.transformer.previous_residual = None
+        pipe.transformer.pre_compute_hidden =None
+        pipe.transformer.predict_loss  = None
+        pipe.transformer.predict_hidden_states= None
+        pipe.transformer.threshold= 0.16
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"taylorseer_step")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"taylorseer_step_300")
+        elif args.dataset =="DrawBench":
+            saved_path = os.path.join(args.saved_path,"DrawBench_timeemb_predicterror")
+        else:
+            saved_path = os.path.join(args.saved_path,"timeemb_predicterror_taylor_coco1k")
     if args.taylorseer_step == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power

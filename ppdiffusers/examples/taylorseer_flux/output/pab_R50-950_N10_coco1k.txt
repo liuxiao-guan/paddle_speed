@@ -1,0 +1,1 @@
+pab_R50-950_N10_coco1k: Total 14925.04s, Avg 14.93s/image
