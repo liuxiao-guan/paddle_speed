@@ -12,7 +12,7 @@ import json
 from ppdiffusers import AutoencoderKLWan, WanPipeline,PyramidAttentionBroadcastConfig, apply_pyramid_attention_broadcast
 from ppdiffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 from ppdiffusers.utils import export_to_video_2
-from forwards import wan_forward,wan_block_forward,wan_pipeline, wan_firstpredict_step_forward,wan_step_pipeline,wan_teacache_forward
+from forwards import wan_forward,wan_block_forward,wan_pipeline, wan_firstpredict_step_forward,wan_step_pipeline,wan_teacache_forward,wan_step_forward
 
 import time
 
@@ -315,7 +315,7 @@ if __name__ == '__main__':
         pipe.transformer.cnt = 0
         pipe.transformer.num_steps = 50
         pipe.transformer.predict_loss  = None
-        pipe.transformer.threshold= 0.15
+        pipe.transformer.threshold= 0.36
         pipe.transformer.should_calc = False
 
         if args.dataset == "coco10k":
@@ -323,21 +323,26 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         else:
-            saved_path = os.path.join(args.saved_path,"firstpredict_fs5_cnt2_rel0.15_bO2")
+            saved_path = os.path.join(args.saved_path,"firstpredict_fs5_cnt5_rel0.36_bO3")
     if args.taylorseer_step == True:
-        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
-        #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
+       # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+        model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
+        pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        # TaylorSeer settings
-        pipe.transformer.__class__.num_steps = args.inference_step
-
-        pipe.transformer.__class__.forward = taylorseer_step_flux_forward
+        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        scheduler = UniPCMultistepScheduler(
+            prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
+        )
+        pipe.scheduler = scheduler
+        pipe.__class__.__call__ = wan_step_pipeline
+        pipe.transformer.__class__.forward = wan_step_forward
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"taylorseer_step")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"taylorseer_step_300")
         else:
-            saved_path = os.path.join(args.saved_path,"taylorseer_step_coco1k")
+            saved_path = os.path.join(args.saved_path,"taylorseer_stepN5O1")
     os.makedirs(saved_path, exist_ok=True)
     total_time = 0
     for i, item in enumerate(tqdm(all_prompts)):

@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -9,7 +10,7 @@ from ppdiffusers.utils import USE_PEFT_BACKEND, is_torch_version, logger, scale_
 import matplotlib.pyplot as plt 
 
 import paddle.utils.flops
-import torch 
+
 def TeaCacheForward(
         self,
         hidden_states: paddle.Tensor,
@@ -103,9 +104,6 @@ def TeaCacheForward(
             joint_attention_kwargs.update({"ip_hidden_states": ip_hidden_states})
 
         
-        hidden_states_list = []
-        encoder_hidden_states_list =[ ]
-        hidden_states_first_block = []
         for index_block, block in enumerate(self.transformer_blocks):
             if self.training and self.gradient_checkpointing:
 
@@ -137,7 +135,7 @@ def TeaCacheForward(
                     joint_attention_kwargs=joint_attention_kwargs,
                 )
                 if index_block ==0:
-                    self.hidden_states_first_block.append(hidden_states)
+                    self.hidden_states_first_block.append(hidden_states.detach().clone())
 
 
             # controlnet residual
@@ -190,22 +188,12 @@ def TeaCacheForward(
                     hidden_states[:, encoder_hidden_states.shape[1] :, ...]
                     + controlnet_single_block_samples[index_block // interval_control]
                 )
-        self.hidden_states_list.append(hidden_states)
+        self.hidden_states_list.append(hidden_states.detach().clone())
         hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
 
         hidden_states = self.norm_out(hidden_states, temb)
         output = self.proj_out(hidden_states)
-        #self.delta_hidden_array.append(delta_hidden)
-        # # 画图
-        # plt.plot(delta_hidden, label="Δ hidden_states")
-        # plt.plot(delta_encoder, label="Δ encoder_hidden_states")
-        # plt.xlabel("Block Index")
-        # plt.ylabel("L2 Norm Difference")
-        # plt.title("Difference Between Consecutive Blocks")
-        # plt.legend()
-        # plt.grid()
-        # plt.show()
-        # plt.savefig("/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/plt/diff_block.png")
+        
 
         if USE_PEFT_BACKEND:
             # remove `lora_scale` from each PEFT layer
@@ -220,10 +208,14 @@ from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 from ppdiffusers.models.transformer_flux import FluxTransformer2DModel
-from torch.utils.flop_counter import FlopCounterMode
+
 
 
 # import seaborn as sns
+# 假设你有 prompt_list
+all_delta_hidden = []
+all_delta_hidden_firstblock = []
+
 seed = 42
 prompt = "An image of a squirrel"
 pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
@@ -242,21 +234,18 @@ pipe.transformer.previous_residual = None
 # pipe.transformer.delta_hidden_firstblock = []
 pipe.transformer.hidden_states_list = []
 pipe.transformer.hidden_states_first_block = []
-delta_hidden =[]
-delta_hidden_firstblock =[]
-from torch.utils.flop_counter import FlopCounterMode
-# flop_counter = FlopCounterMode(pipe.transformer)
-input_list =[[1, 4096, 64], [1, 512, 4096], [1, 768],[1],[4096, 3], [512, 3],  [1]]
-input_=[prompt,  50, paddle.Generator().manual_seed(42)]
 
-override_args = {
-    "prompt": "A dog in a hat",
-    "num_inference_steps": 50,
-    "generator": paddle.Generator().manual_seed(42)
-}
+with open('/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/prompts/DrawBench.txt', 'r', encoding='utf-8') as f:
+    all_prompts = [line.strip() for line in f if line.strip()]
+
 
 import time
-for i in range(2):
+for i,prompt in enumerate(all_prompts):
+    # if i >4:
+    #     break
+    # 清空 pipe 内部记录（每个 prompt 一次）
+    pipe.transformer.hidden_states_list = []
+    pipe.transformer.hidden_states_first_block = []
     start_time = time.time()
     img = pipe(
         prompt, 
@@ -265,8 +254,9 @@ for i in range(2):
         ).images[0]
     end = time.time()
     print(f" time takes: {end - start_time:.2f} sec")
-    img.save("origin.png")
-    #delta_hidden_array = np.array(pipe.transformer.delta_hidden_array)  # shape: [num_steps, num_blocks]
+    img.save(os.path.join("/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16/Drawbench_origin",f"{i}.png"))
+    delta_hidden =[]
+    delta_hidden_firstblock =[]
     for i in range(len(pipe.transformer.hidden_states_list)):
     
         dh = ( pipe.transformer.hidden_states_list[i] - pipe.transformer.hidden_states_list[i-1]).abs().mean()/ pipe.transformer.hidden_states_list[i].abs().mean()
@@ -274,18 +264,23 @@ for i in range(2):
         delta_hidden.append(dh)
         delta_hidden_firstblock.append(de)
 
-    plt.figure(figsize=(10, 6))
-    # sns.heatmap(delta_hidden_array, cmap="viridis", cbar=True)
-    plt.plot(delta_hidden_firstblock, label="Δ firtblock hidden")
-    plt.plot(delta_hidden, label="Δ hidden")
-    # plt.plot(delta_encoder, label="Δ encoder_hidden_states")
-    plt.xlabel("diffusion process")
-    plt.ylabel("difference between consecutive timesteps")
-    plt.title("Δ Hidden States(L2 Mean Difference)")
-    plt.legend()
-    plt.show()
-    plt.savefig("Teacache_Flux_relation.png")
-        #img.save("{}.png".format('Teacache_Flux_hmap'))
-    # 总 FLOPs 数（float）
-       
-        # print(flop_counter.get_table())
+    all_delta_hidden.append(delta_hidden)
+    all_delta_hidden_firstblock.append(delta_hidden_firstblock)
+
+# 转为 numpy，补齐长度（如果每步长度一样则不需要）
+min_len = min(len(x) for x in all_delta_hidden)
+delta_hidden_avg = np.mean([[float(v) for v in x[:min_len]] for x in all_delta_hidden], axis=0)
+delta_firstblock_avg = np.mean([[float(v) for v in x[:min_len]] for x in all_delta_hidden_firstblock], axis=0)
+
+
+# 绘图
+plt.figure(figsize=(10, 6))
+plt.plot(delta_firstblock_avg, label="Δ first block hidden (avg)", linewidth=2)
+plt.plot(delta_hidden_avg, label="Δ last block hidden (avg)", linewidth=2)
+plt.xlabel("Diffusion step")
+plt.ylabel("Normalized Δ Hidden")
+plt.title("Average Hidden State Changes Across Prompts")
+plt.legend()
+plt.tight_layout()
+plt.savefig("Teacache_Flux_relation_multi_prompt.png")
+plt.show()

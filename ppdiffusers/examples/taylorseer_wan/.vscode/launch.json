@@ -36,6 +36,33 @@
             "console": "integratedTerminal",
             "args": [],
             "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
+        },
+        {
+            "name": "Python: common_metrics/eval.py --gt_video_dir /root/paddlejob/workspace/env_run/gxl/output/PaddleMIX_A800/inf_speed_wan/origin_fs5_50steps --generated_video_dir /root/paddlejob/workspace/env_run/gxl/output/PaddleMIX_A800/inf_speed_wan/teacache0.26_fs5",
+            "type": "python",
+            "request": "launch",
+            "program": "common_metrics/eval.py",
+            "env": {},
+            "console": "integratedTerminal",
+            "args": [
+                "--gt_video_dir",
+                "/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX_A800/inf_speed_wan/origin_fs5_50steps",
+                "--generated_video_dir",
+                "/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX_A800/inf_speed_wan/teacache0.26_fs5"
+            ],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
+        },
+        {
+            "name": "Python: python text2video_flops.py",
+            "type": "python",
+            "request": "launch",
+            "program": "text2video_flops.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
         }
     ]
 }

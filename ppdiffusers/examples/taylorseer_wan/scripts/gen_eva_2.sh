@@ -1,6 +1,6 @@
 CUDA_VISIBLE_DEVICES=3 python generation_wan_video.py \
 --inference_step 50 \
---seed 42 \
+--seed 124 \
 --dataset 'vbench' \
 --repeat 0 \
 --firstblock_predicterror_taylor

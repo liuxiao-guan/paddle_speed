@@ -65,7 +65,7 @@ def wan_firstpredict_step_forward(
             hidden_states =self.blocks[0](
                 hidden_states, encoder_hidden_states, timestep_proj, rotary_emb
             )
-            if self.cnt > 2:
+            if self.cnt > 5:
                 self.predict_loss = (pre_firstblock_hidden_states - hidden_states).abs().mean()/hidden_states.abs().mean()
                 can_use_cache = self.predict_loss < self.threshold
                 if can_use_cache == False:

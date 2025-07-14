@@ -53,7 +53,7 @@ def cache_step_init(num_steps= 50):
         cache_dic['fresh_threshold'] = 5
         cache_dic['taylor_cache'] = True
         cache_dic['max_order'] = 1
-        cache_dic['firstblock_max_order'] = 2
+        cache_dic['firstblock_max_order'] = 3
         cache_dic['first_enhance'] = 1
 
     elif mode == 'Delta':

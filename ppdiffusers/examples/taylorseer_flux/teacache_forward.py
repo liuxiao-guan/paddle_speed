@@ -331,9 +331,9 @@ pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype
 FluxTransformer2DModel.forward = TeaCacheForward
 pipe.transformer.enable_teacache = True
 pipe.transformer.cnt = 0
-pipe.transformer.num_steps = 28
+pipe.transformer.num_steps = 50
 pipe.transformer.rel_l1_thresh = (
-    0.40  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
+    0.25  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
 )
 pipe.transformer.accumulated_rel_l1_distance = 0
 pipe.transformer.previous_modulated_input = None

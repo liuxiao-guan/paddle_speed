@@ -21,6 +21,16 @@ seed = 42
 prompt =  "An image of a squirrel"
 
 prompt = "An image of a squirrel in Picasso style"
+prompt_list = [
+    "A black colored banana.",
+    "A white colored sandwich.",
+    "A black colored sandwich.", 
+    "An orange colored sandwich.",
+    "A pink colored giraffe.",
+    "A yellow colored giraffe.",
+    "A brown colored giraffe.",
+    "A red car and a white sheep."
+]
 pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
 #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
 
@@ -46,7 +56,7 @@ paddle.device.cuda.max_memory_reserved()
 start = paddle.device.cuda.Event(enable_timing=True)
 end = paddle.device.cuda.Event(enable_timing=True)
 
-for i in range(2):
+for prompt in prompt_list:
     start_time =time.time()
     img = pipe(
         prompt, 

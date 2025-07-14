@@ -21,10 +21,10 @@ import time
 pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
 
 config = PyramidAttentionBroadcastConfig(
-    spatial_attention_block_skip_range=20,
+    spatial_attention_block_skip_range=10,
     # temporal_attention_block_skip_range = 2,
     # cross_attention_block_skip_range = 4,
-    spatial_attention_timestep_skip_range=(50, 1000),
+    spatial_attention_timestep_skip_range=(100, 950),
     current_timestep_callback=lambda: pipe._current_timestep,
 )
 apply_pyramid_attention_broadcast(pipe.transformer, config)
