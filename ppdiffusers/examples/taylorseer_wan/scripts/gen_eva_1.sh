@@ -4,14 +4,20 @@
 # --dataset 'vbench' \
 # --repeat 0 \
 # --firstblock_predicterror_taylor
-
-
-CUDA_VISIBLE_DEVICES=6 python generation_wan_video.py \
+CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
 --inference_step 50 \
---seed 124 \
+--seed 42 \
 --dataset 'vbench' \
 --repeat 0 \
---taylorseer_step
+--pab
+
+
+# CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
+# --inference_step 50 \
+# --seed 42 \
+# --dataset 'vbench' \
+# --repeat 0 \
+# --taylorseer_step
 
 # CUDA_VISIBLE_DEVICES=2 python evaluation.py \
 # --inference_step 50 \

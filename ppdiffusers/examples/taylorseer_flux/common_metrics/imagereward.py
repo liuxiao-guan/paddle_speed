@@ -119,10 +119,12 @@ if __name__ == '__main__':
     image_dir_base ="/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16"
     image_dirs_list = ["DrawBench_firstblock_predicterror_taylor0.08","DrawBench_timeemb_predicterror"]
     i =0
-    for image_dir in image_dirs_list:
+    for image_dir in os.listdir(image_dir_base):
+        image_dir = "DrawBench_taylorseer_N5O1"
+        print(image_dir) 
         # i = i +1
         # if i==2:
-        #     break
+        #     image_dir_base
         image_dir = os.path.join(image_dir_base, image_dir)
     
         mode = 'coco'

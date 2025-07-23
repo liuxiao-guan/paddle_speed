@@ -1,0 +1,1 @@
+DrawBench_taylorseer_N4O1: Total 1634.16s, Avg 8.17s/image

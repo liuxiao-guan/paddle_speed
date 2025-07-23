@@ -274,7 +274,7 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"pab_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_pab")
+            saved_path = os.path.join(args.saved_path,"DrawBench_pab_R100-950_N4")
         else:
             saved_path = os.path.join(args.saved_path,"pab_R100-950_N4_coco1k")
     if args.blockdance == True:
@@ -317,9 +317,9 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"taylorseer_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_taylorseer_N2")
+            saved_path = os.path.join(args.saved_path,"DrawBench_taylorseer_N5O1")
         else:
-            saved_path = os.path.join(args.saved_path,"taylorseer_N3O3_coco1k")
+            saved_path = os.path.join(args.saved_path,"taylorseer_N4O4_coco1k")
     # 加入teacache 方法的
     if args.teacache == True :
 
@@ -355,7 +355,7 @@ if __name__ == '__main__':
         pipe.transformer.cnt = 0
         pipe.transformer.num_steps = 50
         pipe.transformer.residual_diff_threshold = (
-            0.10 #0.05  7.6s 
+            0.03 #0.05  7.6s 
         )
         pipe.transformer.downsample_factor=(1)
         pipe.transformer.accumulated_rel_l1_distance = 0
@@ -458,13 +458,13 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.13
+        pipe.transformer.threshold= 0.03
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.13")
+            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.03")
         else:
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.03_coco1k")
     if args.taylorseer_step == True:

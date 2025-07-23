@@ -1,1 +1,1 @@
-firstpredict_fs5_cnt5_rel0.36_bO3: Total 33070.64s, Avg 34.96s/image
+firstpredict_fs5_cnt5_rel0.36_bO3: Total 53305.68s, Avg 56.35s/image

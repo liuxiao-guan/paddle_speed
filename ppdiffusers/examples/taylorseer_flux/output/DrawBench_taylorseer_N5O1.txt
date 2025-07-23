@@ -1,0 +1,1 @@
+DrawBench_taylorseer_N5O1: Total 1478.73s, Avg 7.39s/image

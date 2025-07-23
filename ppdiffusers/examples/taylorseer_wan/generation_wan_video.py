@@ -219,7 +219,11 @@ if __name__ == '__main__':
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
         config = PyramidAttentionBroadcastConfig(
             spatial_attention_block_skip_range=20,
-            spatial_attention_timestep_skip_range=(100, 950),
+            temporal_attention_block_skip_range=20,
+            cross_attention_block_skip_range=20,
+            spatial_attention_timestep_skip_range=(50, 980),
+            temporal_attention_timestep_skip_range=(50, 980),
+            cross_attention_timestep_skip_range = (50, 980),
             current_timestep_callback=lambda: pipe._current_timestep,
         )
         apply_pyramid_attention_broadcast(pipe.transformer, config)
@@ -229,7 +233,7 @@ if __name__ == '__main__':
         )
         pipe.scheduler = scheduler
         if args.dataset == "vbench":
-            saved_path = os.path.join(args.saved_path,"pab_N20_B100-950")
+            saved_path = os.path.join(args.saved_path,"pab_N20_B50-980")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"pab_300")
         else:

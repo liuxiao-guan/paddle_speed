@@ -1,0 +1,1 @@
+pab_N20_B50-980: Total 73638.63s, Avg 77.84s/image

@@ -1,0 +1,1 @@
+DrawBench_pab_R100-950_N4: Total 3268.17s, Avg 16.34s/image

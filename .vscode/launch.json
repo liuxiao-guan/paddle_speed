@@ -1,9 +1,6 @@
 {
     "version": "0.2.0",
     "configurations": [
-    
-
-        
         {
             "name": "Python: python diffusers_taylor_predicterror_flux.py",
             "type": "python",
@@ -141,6 +138,18 @@
             "console": "integratedTerminal",
             "args": [],
             "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan"
+        },
+        {
+            "name": "Python: python diffusers_taylor_firstblock_predicterror_flux_eva.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_firstblock_predicterror_flux_eva.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
         }
     ]
 }

@@ -1,1 +1,1 @@
-taylorseer_stepN5O1: Total 29587.58s, Avg 31.28s/image
+taylorseer_stepN5O1: Total 47317.24s, Avg 50.02s/image

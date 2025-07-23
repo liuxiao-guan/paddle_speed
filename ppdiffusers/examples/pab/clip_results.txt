@@ -1,0 +1,9 @@
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507112228_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-12000_ls-0.25_promptver-v1/ : 0.3270079493522644
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507112228_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-15000_ls-0.25_promptver-v1/ : 0.32668882608413696
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507112228_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-3000_ls-0.25_promptver-v1/ : 0.32375824451446533
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507112228_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-6000_ls-0.25_promptver-v1/ : 0.3262646496295929
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507112228_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-9000_ls-0.25_promptver-v1/ : 0.3256063163280487
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507112228_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-latest_ls-0.25_promptver-v1/ : 0.3267935812473297
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507122210_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-latest_ls-0.25_promptver-v1/ : 0.3265157639980316
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/date202507131343_step4_shift3__num100_gs3.5_seed42_h1024_w1024_bs1_sched-deterministic_cp-latest_ls-0.25_promptver-v1/ : 0.32705122232437134
+/root/paddlejob/workspace/env_run/output/gxl/pcm_eval_results_flux_coco1k/flux-dev_coco1k/ : 0.3332248628139496

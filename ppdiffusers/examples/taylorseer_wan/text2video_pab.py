@@ -25,7 +25,11 @@ vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=p
 pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 config = PyramidAttentionBroadcastConfig(
     spatial_attention_block_skip_range=20,
-    spatial_attention_timestep_skip_range=(100, 950),
+    temporal_attention_block_skip_range=20,
+    cross_attention_block_skip_range=20,
+    spatial_attention_timestep_skip_range=(50, 950),
+    temporal_attention_timestep_skip_range=(50, 950),
+    cross_attention_timestep_skip_range = (50, 950),
     current_timestep_callback=lambda: pipe._current_timestep,
 )
 apply_pyramid_attention_broadcast(pipe.transformer, config)
@@ -53,11 +57,6 @@ elapsed1 = time.time() - start
 print(f"第一次运行时间: {elapsed1:.2f}s")
 export_to_video_2(output, "output0.mp4", fps=16)
 
-config = PyramidAttentionBroadcastConfig(
-    spatial_attention_block_skip_range=20,
-    spatial_attention_timestep_skip_range=(100, 950),
-    current_timestep_callback=lambda: pipe._current_timestep,
-)
 
 start = time.time()
 output = pipe(
@@ -70,46 +69,5 @@ output = pipe(
     generator=paddle.Generator().manual_seed(42),
 ).frames[0]
 elapsed1 = time.time() - start
-print(f"第一次运行时间: {elapsed1:.2f}s")
-export_to_video_2(output, "output1.mp4", fps=16)
-
-
-config = PyramidAttentionBroadcastConfig(
-    spatial_attention_block_skip_range=16,
-    spatial_attention_timestep_skip_range=(100, 800),
-    current_timestep_callback=lambda: pipe._current_timestep,
-)
-
-start = time.time()
-output = pipe(
-    prompt=prompt,
-    negative_prompt=negative_prompt,
-    height=480,
-    width=832,
-    num_frames=81,
-    guidance_scale=5.0,
-    generator=paddle.Generator().manual_seed(42),
-).frames[0]
-elapsed1 = time.time() - start
-print(f"第一次运行时间: {elapsed1:.2f}s")
-
-
-config = PyramidAttentionBroadcastConfig(
-    spatial_attention_block_skip_range=16,
-    spatial_attention_timestep_skip_range=(100, 900),
-    current_timestep_callback=lambda: pipe._current_timestep,
-)
-
-start = time.time()
-output = pipe(
-    prompt=prompt,
-    negative_prompt=negative_prompt,
-    height=480,
-    width=832,
-    num_frames=81,
-    guidance_scale=5.0,
-    generator=paddle.Generator().manual_seed(42),
-).frames[0]
-elapsed1 = time.time() - start
-print(f"第一次运行时间: {elapsed1:.2f}s")
-export_to_video_2(output, "output3.mp4", fps=16)
+print(f"第二次运行时间: {elapsed1:.2f}s")
+export_to_video_2(output, "output0.mp4", fps=16)

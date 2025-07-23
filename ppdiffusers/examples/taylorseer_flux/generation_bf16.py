@@ -269,10 +269,10 @@ if __name__ == '__main__':
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
 
         config = PyramidAttentionBroadcastConfig(
-            spatial_attention_block_skip_range=10,
+            spatial_attention_block_skip_range=20,
             temporal_attention_block_skip_range = 2,
             cross_attention_block_skip_range = 4,
-            spatial_attention_timestep_skip_range=(100, 950),
+            spatial_attention_timestep_skip_range=(50, 1000),
             current_timestep_callback=lambda: pipe._current_timestep,
         )
         apply_pyramid_attention_broadcast(pipe.transformer, config)
@@ -281,7 +281,7 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"pab_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_pab")
+            saved_path = os.path.join(args.saved_path,"DrawBench_pab_R50-1000_N20")
         else:
             saved_path = os.path.join(args.saved_path,"pab_R50-950_N10_coco1k")
     if args.blockdance == True:
@@ -326,7 +326,7 @@ if __name__ == '__main__':
         elif args.dataset =="DrawBench":
             saved_path = os.path.join(args.saved_path,"DrawBench_taylorseer_N5O2_seed42")
         else:
-            saved_path = os.path.join(args.saved_path,"taylorseer_N5O2_coco1k")
+            saved_path = os.path.join(args.saved_path,"taylorseer_N4O1_coco1k")
     # 加入teacache 方法的
     if args.teacache == True :
 
@@ -337,7 +337,7 @@ if __name__ == '__main__':
         pipe.transformer.cnt = 0
         pipe.transformer.num_steps = 28
         pipe.transformer.rel_l1_thresh = (
-            0.15  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
+            0.19  # 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup, 0.8 for 2.25x speedup
         )
         pipe.transformer.accumulated_rel_l1_distance = 0
         pipe.transformer.previous_modulated_input = None
@@ -347,7 +347,7 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"teacache_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_teacache0.25")
+            saved_path = os.path.join(args.saved_path,"DrawBench_teacache0.19")
         else:
             saved_path = os.path.join(args.saved_path,"teacache0.15_coco1k")
     if args.firstblock_taylorseer == True:
@@ -466,7 +466,7 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.05
+        pipe.transformer.threshold= 0.08
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
@@ -474,7 +474,7 @@ if __name__ == '__main__':
         elif args.dataset =="DrawBench":
             saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.08")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.05_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.08_coco1k")
     if args.timeemb_predicterror_taylor==True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         pipe.transformer.__class__.forward = Taylor_timeemb_predicterror_Forward

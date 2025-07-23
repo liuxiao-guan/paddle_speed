@@ -1,0 +1,1 @@
+DrawBench_pab_R50-1000_N20: Total 2431.21s, Avg 12.16s/image

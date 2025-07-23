@@ -1,10 +1,32 @@
-CUDA_VISIBLE_DEVICES=3 python generation_wan_video.py \
+CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
 --inference_step 50 \
 --seed 124 \
 --dataset 'vbench' \
---repeat 0 \
+--repeat 1 \
 --firstblock_predicterror_taylor
 
+
+CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
+--inference_step 50 \
+--seed 256 \
+--dataset 'vbench' \
+--repeat 2 \
+--firstblock_predicterror_taylor
+
+CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
+--inference_step 50 \
+--seed 257 \
+--dataset 'vbench' \
+--repeat 3 \
+--firstblock_predicterror_taylor
+
+
+CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
+--inference_step 50 \
+--seed 258 \
+--dataset 'vbench' \
+--repeat 4 \
+--firstblock_predicterror_taylor
 
 # CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
 # --inference_step 50 \

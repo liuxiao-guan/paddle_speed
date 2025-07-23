@@ -1,1 +1,1 @@
-firstblock_predicterror_taylor0.03_coco1k: Total 11264.38s, Avg 11.26s/image
+firstblock_predicterror_taylor0.03_coco1k: Total 11084.94s, Avg 11.08s/image

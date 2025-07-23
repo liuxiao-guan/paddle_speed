@@ -1,0 +1,1 @@
+DrawBench_taylorseer_N3O1: Total 1996.82s, Avg 9.98s/image

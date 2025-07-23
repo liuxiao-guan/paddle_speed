@@ -1,1 +1,1 @@
-taylorseer_fs5_N5: Total 60165.88s, Avg 63.60s/image
+taylorseer_fs5_N5: Total 57978.52s, Avg 61.29s/image
