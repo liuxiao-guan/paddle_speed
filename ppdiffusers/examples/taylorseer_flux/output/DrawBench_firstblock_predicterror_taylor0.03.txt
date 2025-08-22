@@ -1,1 +1,1 @@
-DrawBench_firstblock_predicterror_taylor0.03: Total 2207.16s, Avg 11.04s/image
+DrawBench_firstblock_predicterror_taylor0.03: Total 2205.99s, Avg 11.03s/image

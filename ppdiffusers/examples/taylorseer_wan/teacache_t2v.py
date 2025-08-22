@@ -32,7 +32,7 @@ scheduler = UniPCMultistepScheduler(
 pipe.transformer.__class__.forward = wan_teacache_forward
 pipe.scheduler = scheduler
 # pipe.__class__.generate = t2v_generate
-pipe.transformer.enable_teacache = True
+pipe.transformer.enable_teacache = False
 ## 这些参数后面不要加__class__
 pipe.transformer.cnt = 0
 pipe.transformer.num_steps = 50*2 # 因为有cfg

@@ -466,13 +466,13 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.08
+        pipe.transformer.threshold= 0.13
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.08")
+            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.13")
         else:
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.08_coco1k")
     if args.timeemb_predicterror_taylor==True:

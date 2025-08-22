@@ -31,7 +31,7 @@ prompt_list = [
     "A brown colored giraffe.",
     "A red car and a white sheep."
 ]
-pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.float16)
+pipe = DiffusionPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
 #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
 
 
@@ -47,17 +47,19 @@ pipe.transformer.previous_residual = None
 pipe.transformer.pre_compute_hidden =None
 pipe.transformer.predict_loss  = None
 pipe.transformer.predict_hidden_states= None
-pipe.transformer.threshold= 0.13
+pipe.transformer.threshold= 0.03
 
-parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
-
-paddle.device.cuda.max_memory_reserved()
+#parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
+parameter_peak_memory =0
+# paddle.device.cuda.max_memory_reserved()
 #start_time = time.time()
 start = paddle.device.cuda.Event(enable_timing=True)
 end = paddle.device.cuda.Event(enable_timing=True)
 
 # for prompt in prompt_list:
 for i in range(2):
+    paddle.device.cuda.reset_max_memory_allocated()
+
     start_time =time.time()
     img = pipe(
         prompt, 
@@ -73,5 +75,5 @@ for i in range(2):
     #img.save(f"{pkl_list[i]}.png")
 
     print(
-        f"epoch time: {elapsed1:.2f} sec, parameter memory: {parameter_peak_memory/1e9:.2f} GB, memory: {peak_memory/1e9:.2f} GB"
+        f"epoch time: {elapsed1:.2f} sec, parameter memory: {parameter_peak_memory/(1024 * 1024 * 1024):.2f} GB, memory: {peak_memory/(1024 * 1024 * 1024):.2f} GB"
     )

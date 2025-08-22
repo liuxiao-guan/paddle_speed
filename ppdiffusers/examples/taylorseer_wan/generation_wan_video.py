@@ -198,7 +198,7 @@ if __name__ == '__main__':
         vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        flow_shift = 8.0  # 5.0 for 720P, 3.0 for 480P
         scheduler = UniPCMultistepScheduler(
             prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
         )
@@ -361,7 +361,7 @@ if __name__ == '__main__':
             height=480,
             width=832,
             num_frames=81,
-            guidance_scale=5.0,
+            guidance_scale=6.0,
             generator=paddle.Generator().manual_seed(args.seed),
         ).frames[0]
         end = time.time()

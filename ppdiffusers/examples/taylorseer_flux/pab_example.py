@@ -34,6 +34,7 @@ apply_pyramid_attention_broadcast(pipe.transformer, config)
 prompt = "A cat holding a sign that says hello world"
 import time 
 for  i in range(2):
+    paddle.device.cuda.reset_max_memory_allocated()
     start =time.time()
     image = pipe(
         prompt,
@@ -45,5 +46,9 @@ for  i in range(2):
         generator=paddle.Generator().manual_seed(42),
     ).images[0]
     end=time.time()
+    peak_memory = paddle.device.cuda.max_memory_allocated()
+    print(
+        f"memory: {peak_memory/(1024 * 1024 * 1024):.2f} GB"
+    )
     print(end-start)
     image.save("text_to_image_generation-flux-dev-result.png")

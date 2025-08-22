@@ -1,0 +1,1 @@
+rm_basetaylor_firstblock_predicterror_taylor0.13_coco1k: Total 6671.80s, Avg 6.67s/image

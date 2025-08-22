@@ -1,9 +1,9 @@
-# CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
-# --inference_step 50 \
-# --seed 42 \
-# --dataset 'vbench' \
-# --repeat 0 \
-# --taylorseer
+CUDA_VISIBLE_DEVICES=4 python generation_wan_video.py \
+--inference_step 50 \
+--seed 42 \
+--dataset 'vbench' \
+--repeat 0 \
+--teacache
 
 # CUDA_VISIBLE_DEVICES=1 python generation_wan_video.py \
 # --inference_step 50 \
@@ -12,12 +12,12 @@
 # --repeat 0 \
 # --pab
 
-CUDA_VISIBLE_DEVICES=1 python generation_wan_video.py \
---inference_step 50 \
---seed 42 \
---dataset 'vbench' \
---repeat 0 \
---pab
+# CUDA_VISIBLE_DEVICES=1 python generation_wan_video.py \
+# --inference_step 50 \
+# --seed 42 \
+# --dataset 'vbench' \
+# --repeat 0 \
+# --pab
 
 
 

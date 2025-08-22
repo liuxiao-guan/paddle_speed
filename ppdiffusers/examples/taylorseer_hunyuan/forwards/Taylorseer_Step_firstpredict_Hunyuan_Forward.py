@@ -86,6 +86,9 @@ def taylorseer_step_firstpredict_hunyuan_forward(
                 # 要用block得输入来预测
                 current['block_activated_steps'].append(current['step'])
                 firstblock_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
+        else:
+            current['block_activated_steps'].append(current['step'])
+            firstblock_derivative_approximation(cache_dic=cache_dic, current=current, feature=hidden_states)
 
         if self.cnt == 0 or self.cnt == self.num_steps - 1:
                 should_calc = True

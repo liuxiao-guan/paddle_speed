@@ -33,13 +33,14 @@ for single_transformer_block in pipeline.transformer.single_transformer_blocks:
 
 
 
-parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
-
+# parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
+parameter_peak_memory =0
 
 # paddle.flops(pipeline.transformer, input_list=input_list, print_detail=True)
 
 
 for i in range(2):
+    paddle.device.cuda.reset_max_memory_allocated()
     start_time = time.time()
     img = pipeline(
         prompt, 
@@ -48,7 +49,11 @@ for i in range(2):
         ).images[0]
 
     end_time = time.time()
-    print(f" time takes: {end_time - start_time:.2f} sec")
+    peak_memory = paddle.device.cuda.max_memory_allocated()
+    # print(f" time takes: {end_time - start_time:.2f} sec")
+    print(
+        f"epoch time: {end_time - start_time:.2f} sec, parameter memory: {parameter_peak_memory/(1024 * 1024 * 1024):.2f} GB, memory: {peak_memory/(1024 * 1024 * 1024):.2f} GB"
+    )
 
     img.save("{}.png".format('taylorseer_' + prompt))
 

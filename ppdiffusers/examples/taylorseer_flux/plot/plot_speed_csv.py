@@ -2,10 +2,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as font_manager
 import matplotlib.ticker as mticker
-fontpath ="/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/plot/times.ttf"
-prop = font_manager.FontProperties(fname=fontpath)
-plt.rcParams["font.family"] = "Times New Roman"
-print(plt.rcParams['font.family'])
+# fontpath ="/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/plot/times.ttf"
+# prop = font_manager.FontProperties(fname=fontpath)
+# plt.rcParams["font.family"] = "Times New Roman"
+# print(plt.rcParams['font.family'])
+bold_font_path = "/usr/share/fonts/truetype/msttcorefonts/timesbd.ttf"
+bold_font = font_manager.FontProperties(fname=bold_font_path,size=26)
 # 读取 Excel 文件（你需要将文件名替换成自己的）
 df = pd.read_excel("/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/plot/plot_speed.xlsx")  # 例如 "results.xlsx"
 
@@ -14,13 +16,14 @@ import pandas as pd
 import os
 
 # 设置字体（可选）
-plt.rcParams["font.family"] = "Times New Roman"
-plt.rcParams["font.size"] = 20
-plt.rcParams["axes.titlesize"] =18
-plt.rcParams["axes.labelsize"] = 18
-plt.rcParams["xtick.labelsize"] = 16
-plt.rcParams["ytick.labelsize"] = 16
-plt.rcParams["legend.fontsize"] = 14
+plt.rcParams['font.family'] = bold_font.get_name()  # 例如 'Times New Roman'
+plt.rcParams["font.weight"] = "bold"   
+plt.rcParams["font.size"] = 26
+plt.rcParams["axes.titlesize"] =22
+plt.rcParams["axes.labelsize"] = 28
+plt.rcParams["xtick.labelsize"] = 22
+plt.rcParams["ytick.labelsize"] = 22
+plt.rcParams["legend.fontsize"] = 18
 # 柔和的浅色调（可扩展）
 pastel_colors = [
     "#aec7e8",  # 浅蓝
@@ -42,7 +45,7 @@ for i, method in enumerate(methods):
         color_map[method] = pastel_colors[i % len(pastel_colors)]  # 自动循环使用浅色
 
 # 开始绘图
-plt.figure(figsize=(8, 6))
+plt.figure(figsize=(6, 6))
 
 for method, group in df.groupby("method"):
     color = color_map[method]
@@ -57,24 +60,26 @@ for method, group in df.groupby("method"):
         color=color,
         linestyle=linestyle,
         marker='o',
-        linewidth=2
+        linewidth=3
     )
 
-plt.xlabel("Speedup Ratio")
-plt.ylabel("SSIM↑")
+plt.xlabel("Speedup Ratio",fontproperties=bold_font)
+plt.ylabel("SSIM↑",fontproperties=bold_font)
 # plt.title("SSIM vs Speedup Ratio")
 plt.legend(loc='lower right')
 plt.grid(True,linestyle="--",linewidth=0.5, alpha=0.7)
-plt.tight_layout()
+# plt.tight_layout()
+plt.subplots_adjust(left=0.15, right=0.98, bottom=0.15, top=0.98)
+
 
 # 保存图像
 os.makedirs("./plot", exist_ok=True)
-plt.savefig("./plot/plot_speed_ssim.png", dpi=300,bbox_inches='tight')
+plt.savefig("./plot/plot_speed_ssim.png", dpi=600,bbox_inches=None)
 plt.show()
 
 
 # 开始绘图
-plt.figure(figsize=(8, 6))
+plt.figure(figsize=(6, 6))
 
 for method, group in df.groupby("method"):
     color = color_map[method]
@@ -89,25 +94,26 @@ for method, group in df.groupby("method"):
         color=color,
         linestyle=linestyle,
         marker='o',
-        linewidth=2
+        linewidth=3
     )
 
-plt.xlabel("Speedup Ratio")
-plt.ylabel("PSNR↑")
+plt.xlabel("Speedup Ratio",fontproperties=bold_font)
+plt.ylabel("PSNR↑",fontproperties=bold_font)
 # plt.title("SSIM vs Speedup Ratio")
 plt.legend(loc='lower right')
 plt.grid(True,linestyle="--",linewidth=0.5, alpha=0.7)
-plt.tight_layout()
+# plt.tight_layout()
+plt.subplots_adjust(left=0.18, right=0.98, bottom=0.15, top=0.98)
 
 # 保存图像
 os.makedirs("./plot", exist_ok=True)
-plt.savefig("./plot/plot_speed_psnr.png", dpi=300,bbox_inches='tight')
+plt.savefig("./plot/plot_speed_psnr.png", dpi=600,bbox_inches=None)
 plt.show()
 
 
 # --------- 1⃣ 创建上下子图并准备数据，保持不变 ----------
 fig, (ax_top, ax_bottom) = plt.subplots(
-    2, 1, sharex=True, figsize=(8, 6),
+    2, 1, sharex=True, figsize=(6, 6),
     gridspec_kw={'height_ratios': [3, 1]}
 )
 
@@ -119,7 +125,7 @@ for method, group in df.groupby("method"):
     color = color_map[method]
     linestyle = "-" if method == "ours" else "--"
     marker = 'o'
-    lw = 2
+    lw = 3
 
     ax_top.plot(group["speedup ratio"], group["image reward"],
                 label=method, color=color,
@@ -156,14 +162,14 @@ ax_bottom.plot((-d, +d), (1 - d, 1 + d), **kwargs)
 ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
 
 # --------- 5⃣ 只保留一个 y 轴标签 ----------
-fig.text(0.01, 0.5, "Image Reward↑", va='center', rotation='vertical', fontsize=20)
+fig.text(0.01, 0.55, "Image Reward↑", va='center', rotation='vertical', fontsize=26)
 ax_bottom.set_ylabel("")           # 下轴置空
-ax_bottom.set_xlabel("Speedup Ratio")
+ax_bottom.set_xlabel("Speedup Ratio",fontproperties=bold_font)
 
 # --------- 6⃣ 图例与布局 ----------
 # ax_top.legend(ncol=len(df["method"].unique()),
 #               loc="upper center", bbox_to_anchor=(0.5, 1.15))
 plt.legend(loc='lower right')
-plt.tight_layout()
+plt.subplots_adjust(left=0.19, right=0.98, bottom=0.15, top=0.98)
+plt.savefig("./plot/plot_speed_imagereward.png", dpi=600,bbox_inches=None)
 plt.show()
-plt.savefig("./plot/plot_speed_imagereward.png", dpi=300,bbox_inches='tight')

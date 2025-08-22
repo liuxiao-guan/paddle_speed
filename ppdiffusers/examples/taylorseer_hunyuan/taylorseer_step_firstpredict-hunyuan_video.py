@@ -41,7 +41,7 @@ pipe.transformer.__class__.forward = taylorseer_step_firstpredict_hunyuan_forwar
 pipe.transformer.cnt = 0
 pipe.transformer.num_steps = 50
 pipe.transformer.predict_loss  = None
-pipe.transformer.threshold= 0.03
+pipe.transformer.threshold= 0.12
 
 
 # for double_transformer_block in pipe.transformer.transformer_blocks:

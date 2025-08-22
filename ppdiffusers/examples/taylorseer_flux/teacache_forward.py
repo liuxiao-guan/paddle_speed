@@ -339,6 +339,7 @@ pipe.transformer.accumulated_rel_l1_distance = 0
 pipe.transformer.previous_modulated_input = None
 pipe.transformer.previous_residual = None
 for i in range(2):
+    paddle.device.cuda.reset_max_memory_allocated()
     start = time.time()
     # pipe.to("cuda")
     img = pipe(
@@ -347,5 +348,10 @@ for i in range(2):
         generator=paddle.Generator().manual_seed(seed)
         ).images[0]
     end = time.time()
+    peak_memory = paddle.device.cuda.max_memory_allocated()
+    print(
+        f"memory: {peak_memory/(1024 * 1024 * 1024):.2f} GB"
+    )
+
     print(f"time takens {end - start}s")
     img.save("{}.png".format('Teacache_Flux'))

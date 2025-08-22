@@ -34,7 +34,7 @@ pipeline.transformer.__class__.forward = taylorseer_step_flux_forward
 
 # pipeline.to("cuda")
 
-parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
+# parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
 
 paddle.device.cuda.max_memory_reserved()
 #start_time = time.time()
@@ -42,6 +42,7 @@ start = paddle.device.cuda.Event(enable_timing=True)
 end = paddle.device.cuda.Event(enable_timing=True)
 for i in range(2):
     start.record()
+    paddle.device.cuda.reset_max_memory_allocated()
     img = pipeline(
         prompt, 
         num_inference_steps=num_inference_steps,
@@ -56,5 +57,5 @@ for i in range(2):
     img.save("{}.png".format('origin_' + prompt))
 
     print(
-        f"epoch time: {elapsed_time:.2f} sec, parameter memory: {parameter_peak_memory/1e9:.2f} GB, memory: {peak_memory/1e9:.2f} GB"
+        f"epoch time: {elapsed_time:.2f} sec, memory: {peak_memory/(1024 * 1024 * 1024):.2f} GB"
     )
