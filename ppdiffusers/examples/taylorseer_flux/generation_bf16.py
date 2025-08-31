@@ -18,7 +18,8 @@ from forwards import TeaCacheForward
 from forwards import FirstBlock_taylor_predict_Forward,FirstBlock_taylor_block_predict_Forward,Taylor_predicterror_Forward, \
 BlockDanceForward,Taylor_predicterror_base_Forward,Taylor_firstblock_predicterror_Forward,taylorseer_flux_forward, \
     taylorseer_flux_double_block_forward, taylorseer_flux_single_block_forward,taylorseer_step_flux_forward, \
-    Taylor_firstblock_pre_predicterror_Forward,Taylor_timeemb_predicterror_Forward
+    Taylor_firstblock_pre_predicterror_Forward,Taylor_timeemb_predicterror_Forward,Taylor_firstblock_predicterror_timede_Forward, \
+    Taylor_otherblock_predicterror_Forward
 
 import sys
 sys.stdout.isatty = lambda: False
@@ -166,6 +167,13 @@ def parse_args():
         default=False, 
         help='do add predicterror taylorseer block base',
     )
+    # time-dependent threshold
+    parser.add_argument(
+        '--firstblock_pre_predicterror_taylor_timede', 
+        action='store_true', 
+        default=False, 
+        help='do add predicterror taylorseer block base',
+    )
     parser.add_argument(
         '--taylorseer', 
         action='store_true', 
@@ -178,7 +186,12 @@ def parse_args():
         default=False, 
         help='do add taylorseer step ',
     )
-    
+    parser.add_argument(
+        '--otherblock_predicterror_taylor', 
+        action='store_true', 
+        default=False, 
+        help='do add taylorseer step ',
+    )
 
     parser.add_argument(
         '--origin', 
@@ -466,15 +479,57 @@ if __name__ == '__main__':
         pipe.transformer.pre_compute_hidden =None
         pipe.transformer.predict_loss  = None
         pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.13
+        pipe.transformer.threshold= 0.03
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         elif args.dataset =="DrawBench":
-            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.13")
+            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor0.03")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.08_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.03_coco1k")
+    if args.otherblock_predicterror_taylor == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+        pipe.transformer.__class__.forward = Taylor_otherblock_predicterror_Forward
+        pipe.transformer.enable_teacache = True
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = args.inference_step
+
+        pipe.transformer.pre_firstblock_hidden_states = None
+        pipe.transformer.previous_residual = None
+        pipe.transformer.pre_compute_hidden =None
+        pipe.transformer.predict_loss  = None
+        pipe.transformer.predict_hidden_states= None
+        pipe.transformer.threshold= 0.13
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"thirdblock_predicterror_taylor")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"thirdblock_predicterror_taylor_300")
+        elif args.dataset =="DrawBench":
+            saved_path = os.path.join(args.saved_path,"DrawBench_thirdblock_predicterror_taylor0.13")
+        else:
+            saved_path = os.path.join(args.saved_path,"thirdblock_predicterror_taylor0.13_coco1k")
+    if args.firstblock_pre_predicterror_taylor_timede == True:
+        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
+        pipe.transformer.__class__.forward = Taylor_firstblock_predicterror_timede_Forward
+        pipe.transformer.enable_teacache = True
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = args.inference_step
+
+        pipe.transformer.pre_firstblock_hidden_states = None
+        pipe.transformer.previous_residual = None
+        pipe.transformer.pre_compute_hidden =None
+        pipe.transformer.predict_loss  = None
+        pipe.transformer.predict_hidden_states= None
+        pipe.transformer.threshold= 0.13
+        if args.dataset == "coco10k":
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_timede")
+        elif args.dataset == "300Prompt":
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_timede_300")
+        elif args.dataset =="DrawBench":
+            saved_path = os.path.join(args.saved_path,"DrawBench_firstblock_predicterror_taylor_timede_0.13")
+        else:
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_timede_0.13_coco1k")
     if args.timeemb_predicterror_taylor==True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         pipe.transformer.__class__.forward = Taylor_timeemb_predicterror_Forward

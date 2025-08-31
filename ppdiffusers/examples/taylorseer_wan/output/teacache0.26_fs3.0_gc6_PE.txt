@@ -1,0 +1,1 @@
+teacache0.26_fs3.0_gc6_PE: Total 55088.38s, Avg 58.23s/image

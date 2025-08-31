@@ -18,7 +18,9 @@ from ppdiffusers.utils import export_to_video,export_to_video_2
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
 import json
-from forwards import taylorhunyuanpipeline,taylorseer_hunyuan_forward,taylorseer_hunyuan_double_block_forward,taylorseer_hunyuan_single_block_forward
+from forwards import taylorhunyuanpipeline,taylorseer_hunyuan_forward, \
+taylorseer_hunyuan_double_block_forward,taylorseer_hunyuan_single_block_forward,teacache_forward,\
+taylorstepfirstpredicthunyuanpipeline,taylorseer_step_firstpredict_hunyuan_forward
 
 
 # from teacache_forward import TeaCacheForward
@@ -160,6 +162,12 @@ def parse_args():
         default='coco10k',
         help="the path of evaluation annotations",
     )
+    parser.add_argument(
+        '--repeat',
+        type=int,
+        default=0,
+        help='the count of repeat',
+    )
     
     args = parser.parse_args()
     return args
@@ -172,6 +180,8 @@ if __name__ == '__main__':
     if args.dataset == "vbench":
         with open("/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_hunyuan/vbench/VBench_full_info.json", 'r') as f:
             prompts_data = json.load(f)
+        with open("/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_hunyuan/vbench/hunyuan_all_dimension.txt","r") as f:
+            all_aug_prompts=[line.strip() for line in f if line.strip()]
         all_prompts = prompts_data[:]
     elif args.dataset == "300Prompt":
         with open('/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/prompts/prompt.txt', 'r', encoding='utf-8') as f:
@@ -196,7 +206,6 @@ if __name__ == '__main__':
     text_encoder = LlamaModel.from_pretrained(model_id, subfolder="text_encoder", dtype="float16")
     # 原始生成的
     if args.origin == True:
-        
         pipe = HunyuanVideoPipeline.from_pretrained(
             model_id,
             transformer = transformer,
@@ -217,22 +226,30 @@ if __name__ == '__main__':
     if args.tgate == True :
         pass
     if args.pab == True:
-        # pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
-
-        # config = PyramidAttentionBroadcastConfig(
-        #     spatial_attention_block_skip_range=10,
-        #     temporal_attention_block_skip_range = 2,
-        #     cross_attention_block_skip_range = 4,
-        #     spatial_attention_timestep_skip_range=(100, 950),
-        #     current_timestep_callback=lambda: pipe._current_timestep,
-        # )
-        # apply_pyramid_attention_broadcast(pipe.transformer, config)
+        pipe = HunyuanVideoPipeline.from_pretrained(
+            model_id,
+            transformer=transformer,
+            text_encoder=text_encoder,
+            tokenizer=tokenizer,
+            paddle_dtype=paddle.float16,
+            map_location="cpu",
+        )
+        config = PyramidAttentionBroadcastConfig(
+            spatial_attention_block_skip_range=4,
+            temporal_attention_block_skip_range=5,
+            cross_attention_block_skip_range=6,
+            spatial_attention_timestep_skip_range=(100, 1000),
+            current_timestep_callback=lambda: pipe._current_timestep,
+        )
+        apply_pyramid_attention_broadcast(pipe.transformer, config)
+        pipe.vae.enable_tiling()
+        pipe.vae.enable_slicing()
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"pab")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"pab_300")
         else:
-            saved_path = os.path.join(args.saved_path,"pab_coco1k")
+            saved_path = os.path.join(args.saved_path,"pab_456")
     if args.blockdance == True:
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"blockdance")
@@ -241,18 +258,17 @@ if __name__ == '__main__':
         else:
             saved_path = os.path.join(args.saved_path,"blockdance_R950_B30-15_N8_coco1k")
     if args.taylorseer == True:
-        
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"taylorseer")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"taylorseer_300")
         else:
-            saved_path = os.path.join(args.saved_path,"taylorseer")
-        os.environ["SKIP_PARENT_CLASS_CHECK"] = "True"
-        model_id = "hunyuanvideo-community/HunyuanVideo"
-        transformer = HunyuanVideoTransformer3DModel.from_pretrained(model_id, subfolder="transformer", paddle_dtype=paddle.bfloat16)
-        tokenizer = LlamaTokenizerFast.from_pretrained(model_id, subfolder="tokenizer")
-        text_encoder = LlamaModel.from_pretrained(model_id, subfolder="text_encoder", dtype="float16")
+            saved_path = os.path.join(args.saved_path,"taylorseer_N5O1")
+        # os.environ["SKIP_PARENT_CLASS_CHECK"] = "True"
+        # model_id = "hunyuanvideo-community/HunyuanVideo"
+        # transformer = HunyuanVideoTransformer3DModel.from_pretrained(model_id, subfolder="transformer", paddle_dtype=paddle.bfloat16)
+        # tokenizer = LlamaTokenizerFast.from_pretrained(model_id, subfolder="tokenizer")
+        # text_encoder = LlamaModel.from_pretrained(model_id, subfolder="text_encoder", dtype="float16")
         pipe = HunyuanVideoPipeline.from_pretrained(
             model_id,
             transformer = transformer,
@@ -272,33 +288,56 @@ if __name__ == '__main__':
             single_transformer_block.__class__.forward = taylorseer_hunyuan_single_block_forward
     # 加入teacache 方法的
     if args.teacache == True :
+        pipe = HunyuanVideoPipeline.from_pretrained(
+            model_id,
+            transformer=transformer,
+            text_encoder=text_encoder,
+            tokenizer=tokenizer,
+            paddle_dtype=paddle.float16,
+            map_location="cpu",
+        )
+
+        pipe.transformer.enable_teacache = True
+        pipe.transformer.cnt = 0
+        pipe.transformer.num_steps = 50
+        pipe.transformer.rel_l1_thresh = 0.15  # 0.1 for 1.6x speedup, 0.15 for 2.1x speedup
+        pipe.transformer.accumulated_rel_l1_distance = 0
+        pipe.transformer.previous_modulated_input = None
+        pipe.transformer.previous_residual = None
+        pipe.transformer.__class__.forward = teacache_forward
+
+        pipe.vae.enable_tiling()
+        pipe.vae.enable_slicing()
 
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"teacache")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"teacache_300")
         else:
-            saved_path = os.path.join(args.saved_path,"teacache_coco1k")
+            saved_path = os.path.join(args.saved_path,"teacache0.15")
    
     if args.firstblock_predicterror_taylor == True:
-        pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
-        pipe.transformer.__class__.forward = Taylor_firstblock_predicterror_Forward
-        pipe.transformer.enable_teacache = True
+        pipe = HunyuanVideoPipeline.from_pretrained(
+            model_id,
+            transformer = transformer,
+            text_encoder = text_encoder,
+            tokenizer = tokenizer,
+            paddle_dtype=paddle.float16,
+            map_location="cpu")
+        pipe.vae.enable_tiling()
+        pipe.vae.enable_slicing()
+        pipe.__class__.__call__ = taylorstepfirstpredicthunyuanpipeline
+        pipe.transformer.__class__.forward = taylorseer_step_firstpredict_hunyuan_forward
         pipe.transformer.cnt = 0
-        pipe.transformer.num_steps = args.inference_step
-
-        pipe.transformer.pre_firstblock_hidden_states = None
-        pipe.transformer.previous_residual = None
-        pipe.transformer.pre_compute_hidden =None
+        pipe.transformer.num_steps = 50
         pipe.transformer.predict_loss  = None
-        pipe.transformer.predict_hidden_states= None
-        pipe.transformer.threshold= 0.03
+        pipe.transformer.threshold= 0.12
         if args.dataset == "coco10k":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         else:
-            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.03_coco1k")
+            saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor0.12BO2")
     if args.taylorseer_step == True:
         pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-dev", paddle_dtype=paddle.bfloat16)
         #pipeline.enable_model_cpu_offload() #save some VRAM by offloading the model to CPU. Remove this if you have enough GPU power
@@ -322,17 +361,17 @@ if __name__ == '__main__':
         print(prompt)
         start_time = time.time()
         output = pipe(
-            prompt=prompt,
-            height=480,
-            width=640,
-            num_frames=65,
+            prompt=all_aug_prompts[i],
+            height=320,
+            width=512,
+            num_frames=61,
             num_inference_steps=50,
-            generator=paddle.Generator().manual_seed(42),
+            generator=paddle.Generator().manual_seed(42+i),
         ).frames[0]
         end = time.time()
-        print("Time used:" , end - start_time)
+        # print("Time used:" , end - start_time)
         total_time += (end - start_time)
-        export_to_video_2(output, os.path.join(saved_path, f"{i}.mp4"), fps=24)
+        export_to_video_2(output, os.path.join(saved_path, f"{prompt}-{args.repeat}.mp4"), fps=24)
     # 平均时间计算
     avg_time = total_time / len(all_prompts)
     file_name = os.path.basename(saved_path)  # -> 'firstblock_taylorseer0.07_300'

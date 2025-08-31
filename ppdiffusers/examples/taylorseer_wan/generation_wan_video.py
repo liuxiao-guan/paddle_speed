@@ -161,7 +161,11 @@ def parse_args():
         default=0,
         help='the count of repeat',
     )
-    
+    parser.add_argument(
+        '--flow_shift',
+        type=float,
+        default=5.0,
+    )
     args = parser.parse_args()
     return args
 
@@ -175,6 +179,8 @@ if __name__ == '__main__':
         with open("/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_hunyuan/vbench/VBench_full_info.json", 'r') as f:
             prompts_data = json.load(f)
         all_prompts = prompts_data[:]
+        with open("/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_wan/vbench/all_dimension_aug_wanx_seed42.txt", 'r', encoding='utf-8') as f:
+            all_inference_prompts = [line.strip() for line in f if line.strip()]
     elif args.dataset == "300Prompt":
         with open('/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/prompts/prompt.txt', 'r', encoding='utf-8') as f:
             all_prompts = [line.strip() for line in f if line.strip()]
@@ -198,13 +204,13 @@ if __name__ == '__main__':
         vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        flow_shift = 8.0  # 5.0 for 720P, 3.0 for 480P
+        flow_shift = args.flow_shift  # 5.0 for 720P, 3.0 for 480P
         scheduler = UniPCMultistepScheduler(
             prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
         )
         pipe.scheduler = scheduler
         if args.dataset == "vbench":
-            saved_path = os.path.join(args.saved_path,"origin_fs5_50steps")
+            saved_path = os.path.join(args.saved_path,f"origin_fs{args.flow_shift}_gc5_PE__nofixedseed_50steps")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"origin_300")
         else:
@@ -219,21 +225,17 @@ if __name__ == '__main__':
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
         config = PyramidAttentionBroadcastConfig(
             spatial_attention_block_skip_range=20,
-            temporal_attention_block_skip_range=20,
-            cross_attention_block_skip_range=20,
             spatial_attention_timestep_skip_range=(50, 980),
-            temporal_attention_timestep_skip_range=(50, 980),
-            cross_attention_timestep_skip_range = (50, 980),
             current_timestep_callback=lambda: pipe._current_timestep,
         )
         apply_pyramid_attention_broadcast(pipe.transformer, config)
-        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        flow_shift = args.flow_shift  # 5.0 for 720P, 3.0 for 480P
         scheduler = UniPCMultistepScheduler(
             prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
         )
         pipe.scheduler = scheduler
         if args.dataset == "vbench":
-            saved_path = os.path.join(args.saved_path,"pab_N20_B50-980")
+            saved_path = os.path.join(args.saved_path,f"pab_fs{args.flow_shift}_gc5_PE_N20_B50-980")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"pab_300")
         else:
@@ -251,7 +253,7 @@ if __name__ == '__main__':
         vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        flow_shift = args.flow_shift  # 5.0 for 720P, 3.0 for 480P
         scheduler = UniPCMultistepScheduler(
             prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
         )
@@ -266,7 +268,7 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"taylorseer_300")
         else:
-            saved_path = os.path.join(args.saved_path,"taylorseer_fs5_N5")
+            saved_path = os.path.join(args.saved_path,f"taylorseer_fs{args.flow_shift}_gc5_PE_N5")
     # 加入teacache 方法的
     if args.teacache == True :
         # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
@@ -274,7 +276,7 @@ if __name__ == '__main__':
         vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        flow_shift = args.flow_shift # 5.0 for 720P, 3.0 for 480P
         scheduler = UniPCMultistepScheduler(
             prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
         )
@@ -297,7 +299,7 @@ if __name__ == '__main__':
         pipe.transformer.cutoff_steps=50*2 - 2
 
         if args.dataset == "vbench":
-            saved_path = os.path.join(args.saved_path,"teacache0.26_fs5")
+            saved_path = os.path.join(args.saved_path,f"teacache0.26_fs{args.flow_shift}_gc5_PE")
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"teacache_300")
         else:
@@ -309,7 +311,7 @@ if __name__ == '__main__':
         vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        flow_shift = args.flow_shift  # 5.0 for 720P, 3.0 for 480P
         scheduler = UniPCMultistepScheduler(
             prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
         )
@@ -327,14 +329,14 @@ if __name__ == '__main__':
         elif args.dataset == "300Prompt":
             saved_path = os.path.join(args.saved_path,"firstblock_predicterror_taylor_300")
         else:
-            saved_path = os.path.join(args.saved_path,"firstpredict_fs5_cnt5_rel0.36_bO3")
+            saved_path = os.path.join(args.saved_path,f"firstpredict_fs{args.flow_shift}_gc5_PE_cnt5_rel0.36_bO3_nofixseed")
     if args.taylorseer_step == True:
        # Available models: Wan-AI/Wan2.1-T2V-14B-Diffusers, Wan-AI/Wan2.1-T2V-1.3B-Diffusers
         model_id = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
         vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", paddle_dtype=paddle.float32)
         pipe = WanPipeline.from_pretrained(model_id, vae=vae, paddle_dtype=paddle.bfloat16)
 
-        flow_shift = 5.0  # 5.0 for 720P, 3.0 for 480P
+        flow_shift = args.flow_shift # 5.0 for 720P, 3.0 for 480P
         scheduler = UniPCMultistepScheduler(
             prediction_type="flow_prediction", use_flow_sigmas=True, num_train_timesteps=1000, flow_shift=flow_shift
         )
@@ -350,19 +352,19 @@ if __name__ == '__main__':
     os.makedirs(saved_path, exist_ok=True)
     total_time = 0
     for i, item in enumerate(tqdm(all_prompts)):
-        # if i==1:
-        #     break
+        # if i<560:
+        #     continue
         prompt = item.get("prompt_en", "")
         print(prompt)
         start_time = time.time()
         output = pipe(
-            prompt=prompt,
+            prompt=all_inference_prompts[i],
             negative_prompt=negative_prompt,
             height=480,
             width=832,
             num_frames=81,
-            guidance_scale=6.0,
-            generator=paddle.Generator().manual_seed(args.seed),
+            guidance_scale=5.0,
+            generator=paddle.Generator().manual_seed(args.seed+i),
         ).frames[0]
         end = time.time()
         print("Time used:" , end - start_time)

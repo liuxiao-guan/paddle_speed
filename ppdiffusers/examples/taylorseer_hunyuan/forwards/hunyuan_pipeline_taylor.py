@@ -189,7 +189,8 @@ def taylorhunyuanpipeline(
             from calflops import calculate_flops
             from taylor_utils import convert_flops
             total_flops = 0
-
+        import time 
+        start= time.time()
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
                 if self.interrupt:
@@ -252,6 +253,8 @@ def taylorhunyuanpipeline(
                 if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
                     progress_bar.update()
 
+        end =time.time()
+        print(f"no vae times{end-start}s")
         self._current_timestep = None
 
         if not output_type == "latent":

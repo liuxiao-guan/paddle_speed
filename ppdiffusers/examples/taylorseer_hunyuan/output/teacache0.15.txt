@@ -1,0 +1,1 @@
+teacache0.15: Total 44112.33s, Avg 46.63s/image

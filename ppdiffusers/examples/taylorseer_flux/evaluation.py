@@ -7,16 +7,20 @@ from common_metrics.fid_score import ImagePathDataset,calculate_fid_given_paths
 from common_metrics.inception import InceptionV3
 from common_metrics.calculate_ssim import calculate_ssim_function
 from common_metrics.calculate_psnr import img_psnr
+from common_metrics.calculate_lpips import calculate_lpips
 from ppdiffusers import StableDiffusionXLPipeline, PixArtAlphaPipeline, StableVideoDiffusionPipeline
 from ppdiffusers import UNet2DConditionModel, LCMScheduler,FluxPipeline
 from ppdiffusers import DPMSolverMultistepScheduler
 from ppdiffusers.utils import load_image, export_to_video
-
+import lpips
 import paddle.vision.transforms as TF
 from tqdm import tqdm 
 import pathlib
 import re
 import numpy as np
+spatial = True
+# Linearly calibrated models (LPIPS)
+loss_fn = lpips.LPIPS(net="alex", spatial=spatial) 
 
 
 # 使用正则表达式提取文件名中的数字部分
@@ -151,6 +155,7 @@ if __name__ == '__main__':
     print(len(dataloader_speedgen))
     ssim_value_list=[]
     psnr_value_list=[]
+    lpips_value_list =[]
     # 计算ssim与psnr
     for batch_gen, batch_speedgen in tqdm(zip(dataloader_gen, dataloader_speedgen),
                                        total=len(dataloader_gen),
@@ -161,17 +166,21 @@ if __name__ == '__main__':
         batch_gen = batch_gen.squeeze().numpy()
         ssim_value = calculate_ssim_function(batch_gen,batch_speedgen)
         psnr_value = img_psnr(batch_gen,batch_speedgen)
+        # lpips_value = loss_fn.forward(batch_gen, batch_speedgen).mean().detach().cpu().tolist()
         ssim_value_list.append(ssim_value)
         psnr_value_list.append(psnr_value)
-    # 计算fid
-    fid_value_origin = calculate_fid_given_paths(
-        [args.training_path,args.generation_path], args.fid_batch_size,args.dims, args.num_workers, resolution=args.resolution
-    )
-    fid_value_speed = calculate_fid_given_paths(
-        [args.training_path,args.speed_generation_path], args.fid_batch_size,args.dims, args.num_workers, resolution=args.resolution
-    )
+        #lpips_value_list.append(lpips_value)
+
+    # # 计算fid
+    # fid_value_origin = calculate_fid_given_paths(
+    #     [args.training_path,args.generation_path], args.fid_batch_size,args.dims, args.num_workers, resolution=args.resolution
+    # )
+    # fid_value_speed = calculate_fid_given_paths(
+    #     [args.training_path,args.speed_generation_path], args.fid_batch_size,args.dims, args.num_workers, resolution=args.resolution
+    # )
     mean_ssim = np.mean(ssim_value_list)
     mean_psnr = np.mean(psnr_value_list)
+    # mean_lpips = np.mean(lpips_value_list)
     from pathlib import Path
 
     path = Path(args.generation_path)
@@ -179,10 +188,13 @@ if __name__ == '__main__':
     # os.makedirs(save_dir, exist_ok=True)
     # 将对应的指标保存起来
     res_txt = os.path.basename(args.speed_generation_path)
-    with open(os.path.join(parent_path, f"{res_txt}.txt"), "w") as f:  # ← 注意这里用 "a"
+    with open(os.path.join(parent_path, f"{res_txt}.txt"), "a") as f:  # ← 注意这里用 "a"
         f.write(f"mean_ssim: {mean_ssim}\n")
         f.write(f"mean_psnr: {mean_psnr}\n")
-        f.write(f"fid_score_origin: {fid_value_origin}\n")
-        f.write(f"fid_score_speed: {fid_value_speed}\n")
+        # f.write(f"mean_lpips: {mean_lpips}\n")
+        # f.write(f"fid_score_origin: {fid_value_origin}\n")
+        # f.write(f"fid_score_speed: {fid_value_speed}\n")
         #f.write("-" * 40 + "\n")  # 分隔线，方便查看日志
-    print('mean_ssim: ',mean_ssim,'mean_psnr: ',mean_psnr,'fid_score_origin: ',fid_value_origin,'fid_score_speed:',fid_value_speed)
+    #print('mean_ssim: ',mean_ssim,'mean_psnr: ',mean_psnr,'fid_score_origin: ',fid_value_origin,'fid_score_speed:',fid_value_speed)
+    #print('mean_lpips: ',mean_lpips)
+    print('mean_ssim: ',mean_ssim,'mean_psnr: ',mean_psnr)

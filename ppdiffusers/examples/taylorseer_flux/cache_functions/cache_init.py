@@ -69,7 +69,7 @@ def cache_init(self: FluxTransformer2DModel):
         cache_dic['cache'] = cache
         cache_dic['fresh_ratio_schedule'] = 'ToCa' 
         cache_dic['fresh_ratio'] = 0.0
-        cache_dic['fresh_threshold'] = 5
+        cache_dic['fresh_threshold'] = 2
         cache_dic['force_fresh'] = 'global' 
         cache_dic['soft_fresh_weight'] = 0.0
         cache_dic['taylor_cache'] = True

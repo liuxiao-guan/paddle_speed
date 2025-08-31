@@ -1,0 +1,1 @@
+taylorseer_fs3.0_gc6_PE_N5: Total 57874.80s, Avg 61.18s/image

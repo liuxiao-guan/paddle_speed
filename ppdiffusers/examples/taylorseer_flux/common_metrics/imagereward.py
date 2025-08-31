@@ -117,10 +117,11 @@ if __name__ == '__main__':
     # image_dirs_list = ["DrawBench_blockdance","DrawBench_firstblock_predicterror_taylor0.03", \
     # "DrawBench_firstblock_predicterror_taylor0.13","DrawBench_pab","DrawBench_taylorseer_N2","DrawBench_taylorseer_N5"]
     image_dir_base ="/root/paddlejob/workspace/env_run/gxl/output/PaddleMIX/inf_speed_bf16"
-    image_dirs_list = ["DrawBench_firstblock_predicterror_taylor0.08","DrawBench_timeemb_predicterror"]
+    image_dirs_list = ["DrawBench_thirdblock_predicterror_taylor0.13","DrawBench_firstblock_predicterror_taylor0.18","DrawBench_firstblock_predicterror_taylor0.15"]
     i =0
-    for image_dir in os.listdir(image_dir_base):
-        image_dir = "DrawBench_taylorseer_N5O1"
+    # for image_dir in os.listdir(image_dir_base):
+    for image_dir in image_dirs_list:
+        #image_dir = "DrawBench_firstblock_predicterror_taylor0.16"
         print(image_dir) 
         # i = i +1
         # if i==2:

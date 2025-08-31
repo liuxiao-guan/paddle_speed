@@ -1,0 +1,1 @@
+origin_fs3.0_gc5_PE_50steps: Total 68947.18s, Avg 72.88s/image

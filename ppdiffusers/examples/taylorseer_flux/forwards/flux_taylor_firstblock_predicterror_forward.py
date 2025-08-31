@@ -28,6 +28,7 @@ def are_two_tensors_similar(t1, t2, *, threshold, parallelized=False):
     return diff.item() < threshold
 def Taylor_firstblock_predicterror_Forward(
         self,
+        sigmas:None,
         hidden_states: paddle.Tensor,
         encoder_hidden_states: paddle.Tensor = None,
         pooled_projections: paddle.Tensor = None,

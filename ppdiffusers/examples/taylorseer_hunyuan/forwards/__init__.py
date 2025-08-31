@@ -6,3 +6,4 @@ from .Taylorseer_Step_Hunyuan_Forward import taylorseer_step_hunyuan_forward
 from .hunyuan_pipeline_taylor_step import taylorstephunyuanpipeline
 from .hunyuan_pipeline_taylor_step_firstpredict import taylorstepfirstpredicthunyuanpipeline
 from .Taylorseer_Step_firstpredict_Hunyuan_Forward import taylorseer_step_firstpredict_hunyuan_forward
+from .teacache_forward import teacache_forward

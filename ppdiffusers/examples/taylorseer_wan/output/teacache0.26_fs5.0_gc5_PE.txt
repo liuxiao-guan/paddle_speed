@@ -1,0 +1,1 @@
+teacache0.26_fs5.0_gc5_PE: Total 56666.78s, Avg 59.90s/image

@@ -60,6 +60,18 @@
             "console": "integratedTerminal",
             "args": [],
             "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
+        },
+        {
+            "name": "Python: python diffusers_taylor_firstblock_predicterror_flux_timede.py",
+            "type": "python",
+            "request": "launch",
+            "program": "diffusers_taylor_firstblock_predicterror_flux_timede.py",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "3"
+            },
+            "console": "integratedTerminal",
+            "args": [],
+            "cwd": "/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux"
         }
     ]
 }

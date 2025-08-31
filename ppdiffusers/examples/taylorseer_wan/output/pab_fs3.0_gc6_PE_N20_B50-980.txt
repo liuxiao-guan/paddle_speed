@@ -1,0 +1,1 @@
+pab_fs3.0_gc6_PE_N20_B50-980: Total 68825.83s, Avg 72.75s/image

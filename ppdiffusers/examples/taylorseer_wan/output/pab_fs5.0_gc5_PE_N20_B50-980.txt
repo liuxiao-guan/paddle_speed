@@ -1,0 +1,1 @@
+pab_fs5.0_gc5_PE_N20_B50-980: Total 73314.02s, Avg 77.50s/image

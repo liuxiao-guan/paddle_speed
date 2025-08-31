@@ -47,7 +47,7 @@ pipe.transformer.previous_residual = None
 pipe.transformer.pre_compute_hidden =None
 pipe.transformer.predict_loss  = None
 pipe.transformer.predict_hidden_states= None
-pipe.transformer.threshold= 0.03
+pipe.transformer.threshold= 0.13
 
 #parameter_peak_memory = paddle.device.cuda.max_memory_allocated()
 parameter_peak_memory =0

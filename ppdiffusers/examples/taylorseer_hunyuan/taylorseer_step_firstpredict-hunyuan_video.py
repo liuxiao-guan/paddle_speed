@@ -54,9 +54,9 @@ for i in range(2):
     start = time.time()
     output = pipe(
         prompt=prompt,
-        height=480,
-        width=640,
-        num_frames=65,
+        height=320,
+        width=512,
+        num_frames=61,
         num_inference_steps=50,
         # num_videos_per_prompt=5
         generator=paddle.Generator().manual_seed(42),

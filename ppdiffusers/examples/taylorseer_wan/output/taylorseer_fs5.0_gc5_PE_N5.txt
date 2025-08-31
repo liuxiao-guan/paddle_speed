@@ -1,0 +1,1 @@
+taylorseer_fs5.0_gc5_PE_N5: Total 58507.87s, Avg 61.85s/image
