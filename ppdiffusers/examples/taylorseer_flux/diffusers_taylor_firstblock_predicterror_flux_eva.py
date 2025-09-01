@@ -101,7 +101,8 @@ slope, intercept, r_value, p_value, std_err = linregress(x_avg, y_avg)
 x_fit = np.linspace(min(x_avg), max(x_avg), 100)
 y_fit = slope * x_fit + intercept
 import matplotlib.font_manager as font_manager
-bold_font_path = "/usr/share/fonts/truetype/msttcorefonts/timesbd.ttf"
+bold_font_path ="/root/paddlejob/workspace/env_run/gxl/paddle_speed/ppdiffusers/examples/taylorseer_flux/plot/times.ttf"
+font_manager.fontManager.addfont(bold_font_path)
 bold_font = font_manager.FontProperties(fname=bold_font_path,size=20)
 plt.rcParams["font.family"] = "Times New Roman"
     # 设置字体（可选）
