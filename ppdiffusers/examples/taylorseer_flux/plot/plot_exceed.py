@@ -37,12 +37,12 @@ bars_below = plt.bar(x + bar_width/2, steps_below, width=bar_width, label="steps
 # 给每个柱子显示数值
 for bar in bars_above:
     height = bar.get_height()
-    plt.text(bar.get_x() + bar.get_width()/2, height + 0.15, str(height),
+    plt.text(bar.get_x() + bar.get_width()/2, height + 0.06, str(height),
              ha='center', va='bottom', fontsize=12)
 
 for bar in bars_below:
     height = bar.get_height()
-    plt.text(bar.get_x() + bar.get_width()/2, height + 0.15, str(height),
+    plt.text(bar.get_x() + bar.get_width()/2, height + 0.06, str(height),
              ha='center', va='bottom', fontsize=12)
 
 # 美化
